@@ -87,6 +87,25 @@
               required="false" />
 
     <!--
+      On: every line of an Update's values that can be put back gets a
+      Restore, and the row a Restore all. Off (the default — a TwoOptions
+      input cannot default to on, and a write is opt-in whatever it is
+      called): the history is read-only, as 0.1.0 was.
+
+      A restore is `webAPI.updateRecord` on the record with the old value,
+      behind the platform's confirm dialog, and it is audited like any other
+      change — it appears as the newest row. Not offered on a read-only
+      form, to a user without Write on the table, on a canvas host, or for
+      a value the platform cut at 5 KB.
+    -->
+    <property name="showRestore"
+              display-name-key="showRestore_Name"
+              description-key="showRestore_Desc"
+              of-type="TwoOptions"
+              usage="input"
+              required="false" />
+
+    <!--
       Changes fetched per page, and the size of each "Load more". Clamped to
       1–100 by the control. A page is one request — the record-history
       function answers who, when and the values together.

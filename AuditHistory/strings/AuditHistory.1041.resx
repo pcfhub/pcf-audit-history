@@ -73,6 +73,12 @@
   <data name="columnScope_Desc" xml:space="preserve">
     <value>オン: バインドされた列の変更のみ。オフ: レコードの監査対象の変更をすべて表示します。</value>
   </data>
+  <data name="showRestore_Name" xml:space="preserve">
+    <value>復元を表示</value>
+  </data>
+  <data name="showRestore_Desc" xml:space="preserve">
+    <value>オン: 更新の各値を確認後に [復元] ボタンで元に戻せます。オフ: 履歴は読み取り専用です。</value>
+  </data>
   <data name="pageSize_Name" xml:space="preserve">
     <value>ページ サイズ</value>
   </data>
@@ -243,5 +249,50 @@
   </data>
   <data name="AuditHistory_ActionOther" xml:space="preserve">
     <value>アクション {0}</value>
+  </data>
+  <data name="AuditHistory_Restore" xml:space="preserve">
+    <value>復元</value>
+  </data>
+  <data name="AuditHistory_RestoreAll" xml:space="preserve">
+    <value>{0} 件すべて復元</value>
+  </data>
+  <data name="AuditHistory_Restoring" xml:space="preserve">
+    <value>復元しています…</value>
+  </data>
+  <data name="AuditHistory_RestoreConfirmTitle" xml:space="preserve">
+    <value>この値を復元しますか?</value>
+  </data>
+  <data name="AuditHistory_RestoreConfirmOne" xml:space="preserve">
+    <value>{0} を「{1}」に戻します。この変更は監査履歴に記録されます。</value>
+  </data>
+  <data name="AuditHistory_RestoreConfirmClear" xml:space="preserve">
+    <value>{0} をクリアします。この変更は監査履歴に記録されます。</value>
+  </data>
+  <data name="AuditHistory_RestoreConfirmMany" xml:space="preserve">
+    <value>{0} 列を以前の値に戻します。この変更は監査履歴に記録されます。</value>
+  </data>
+  <data name="AuditHistory_RestoreConfirmButton" xml:space="preserve">
+    <value>復元</value>
+  </data>
+  <data name="AuditHistory_Cancel" xml:space="preserve">
+    <value>キャンセル</value>
+  </data>
+  <data name="AuditHistory_Restored" xml:space="preserve">
+    <value>{0} を復元しました。</value>
+  </data>
+  <data name="AuditHistory_RestoredStale" xml:space="preserve">
+    <value>フォームは更新されるまで以前の値を表示します。</value>
+  </data>
+  <data name="AuditHistory_Refresh" xml:space="preserve">
+    <value>更新</value>
+  </data>
+  <data name="AuditHistory_Dismiss" xml:space="preserve">
+    <value>閉じる</value>
+  </data>
+  <data name="AuditHistory_RestoreFailed" xml:space="preserve">
+    <value>値を復元できませんでした: {0}</value>
+  </data>
+  <data name="AuditHistory_NoWritePrivilege" xml:space="preserve">
+    <value>このレコードを変更する権限がありません。</value>
   </data>
 </root>

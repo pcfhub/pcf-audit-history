@@ -24,6 +24,27 @@ export interface AuditRow {
 
 export type ChangeKind = 'set' | 'changed' | 'cleared';
 
+/**
+ * What the wire carried under a column's key, kept as it came: a string, a
+ * number, a boolean, `null` for a key present and empty, and for a lookup
+ * the bare GUID. It is what a restore writes back, so it is never
+ * normalised — a date stays the string the server sent, a choice stays its
+ * integer.
+ */
+export type RawValue = string | number | boolean | null;
+
+/**
+ * The two annotations a lookup arrives with, which are exactly what a write
+ * of it needs. Either is `''` when the wire carried the key without its
+ * annotation — a lookup the control can show and cannot restore.
+ */
+export interface LookupRef {
+    /** `associatednavigationproperty` — the `@odata.bind` key. */
+    navigationProperty: string;
+    /** `lookuplogicalname` — the target table, whose entity set the bind value names. */
+    target: string;
+}
+
 /** One column's old value beside its new one. */
 export interface Change {
     /** The column's logical name, lookups folded from `_x_value` to `x`. */
@@ -34,6 +55,11 @@ export interface Change {
     newText: string;
     /** Either value ends in the ellipsis the server appends at 5 KB. */
     truncated: boolean;
+    /** The wire's own value on each side; `undefined` where the side had no key at all. */
+    oldRaw?: RawValue;
+    newRaw?: RawValue;
+    /** Present when the column is a lookup — the key was `_x_value` — with the annotations either side carried. */
+    lookup?: LookupRef;
 }
 
 /** What `RetrieveAuditDetails` said, by the `@odata.type` it came with. */

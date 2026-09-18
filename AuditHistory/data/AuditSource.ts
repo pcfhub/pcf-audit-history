@@ -15,7 +15,7 @@
  * table ignores `maxPageSize` (P2/P3) — and the control pages what it holds.
  */
 
-import { AuditPage, Cursor, Detail, SourceFault } from '../audit/types';
+import { AuditPage, AuditRow, Cursor, Detail, SourceFault } from '../audit/types';
 import { toRow, toRows } from '../audit/rows';
 import { diffDetail } from '../audit/diff';
 import { attributeHistoryPath, auditsQuery, changeHistoryPath } from '../audit/query';
@@ -248,17 +248,19 @@ export function createLiveSource(o: LiveOptions): AuditSource | null {
 
 /** The demo route: the parsed `sampleData`, paged the way the live one is so *Load more* has something to do. */
 export function createSampleSource(sample: SampleHistory, pageSize: number, column: string | null = null): AuditSource {
-    const rows = column === null
+    // Read per page, not once: a restore on this route prepends a row.
+    const rowsNow = (): AuditRow[] => (column === null
         ? sample.rows
         : sample.rows.filter((row) => {
             const detail = sample.details[row.id];
 
             return detail?.kind === 'attributes' && detail.changes.some((change) => change.column === column);
-        });
+        }));
 
     return {
         route: 'sample',
         loadPage: (cursor) => {
+            const rows = rowsNow();
             const offset = cursor?.kind === 'offset' ? cursor.offset : 0;
             const slice = rows.slice(offset, offset + pageSize);
             const more = offset + pageSize < rows.length;

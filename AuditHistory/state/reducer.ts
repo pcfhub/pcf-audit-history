@@ -20,6 +20,18 @@ export interface Enabled {
     table: boolean | null;
 }
 
+/**
+ * One restore at a time. `busy` disables every Restore until the write
+ * settles — single-flight, because a double press before the dialog paints
+ * is two writes. `done` is the notice that survives the reload it causes;
+ * `failed` sits on the row it came from.
+ */
+export type RestoreState =
+    | { status: 'idle' }
+    | { status: 'busy'; id: string; columns: string[] }
+    | { status: 'done'; columns: string[] }
+    | { status: 'failed'; id: string; columns: string[]; fault: SourceFault };
+
 export interface State {
     rows: AuditRow[];
     details: Record<string, DetailState>;
@@ -37,19 +49,27 @@ export interface State {
     enabled: Enabled;
     /** Pages loaded by the scope on its own, looking for a match. */
     autoPages: number;
+    restore: RestoreState;
+    /** A reload is in flight: the rows on screen are the old list, and the next page replaces them. */
+    reloading: boolean;
 }
 
 export type Action =
     | { type: 'reset' }
     | { type: 'pageRequested' }
     | { type: 'pageLoaded'; page: AuditPage; auto: boolean }
+    | { type: 'reload' }
     | { type: 'pageFailed'; fault: SourceFault }
     | { type: 'detailRequested'; ids: string[] }
     | { type: 'detailLoaded'; id: string; detail: Detail }
     | { type: 'detailFailed'; id: string; fault: SourceFault }
     | { type: 'toggle'; id: string }
     | { type: 'setFilter'; column: string | null }
-    | { type: 'enabledKnown'; enabled: Enabled };
+    | { type: 'enabledKnown'; enabled: Enabled }
+    | { type: 'restoreRequested'; id: string; columns: string[] }
+    | { type: 'restoreDone'; columns: string[] }
+    | { type: 'restoreFailed'; id: string; columns: string[]; fault: SourceFault }
+    | { type: 'restoreDismissed' };
 
 export const initialState: State = {
     rows: [],
@@ -63,6 +83,8 @@ export const initialState: State = {
     filter: null,
     enabled: { org: null, table: null },
     autoPages: 0,
+    restore: { status: 'idle' },
+    reloading: false,
 };
 
 export function reduce(state: State, action: Action): State {
@@ -73,10 +95,19 @@ export function reduce(state: State, action: Action): State {
         case 'pageRequested':
             return { ...state, started: true, loading: state.rows.length === 0 ? 'first' : 'more', error: null };
 
+        /*
+         * Start the list over without emptying it: the rows stay until page
+         * 1 arrives and replaces them, so a restore does not blank the list
+         * it is proving. The filter, the switches and the notice survive.
+         */
+        case 'reload':
+            return { ...state, cursor: null, autoPages: 0, error: null, reloading: true };
+
         case 'pageLoaded': {
-            const seen = new Set(state.rows.map((row) => row.id));
+            const replace = state.reloading;
+            const seen = new Set(replace ? [] : state.rows.map((row) => row.id));
             const fresh = action.page.rows.filter((row) => !seen.has(row.id));
-            const details = { ...state.details };
+            const details = replace ? {} : { ...state.details };
 
             // The record-history route hands the values over with the rows.
             for (const row of fresh) {
@@ -87,19 +118,25 @@ export function reduce(state: State, action: Action): State {
                 }
             }
 
+            const expanded = replace
+                ? Object.fromEntries(fresh.filter((row) => state.expanded[row.id]).map((row) => [row.id, true as const]))
+                : state.expanded;
+
             return {
                 ...state,
-                rows: [...state.rows, ...fresh],
+                rows: replace ? fresh : [...state.rows, ...fresh],
                 details,
+                expanded,
                 cursor: action.page.next,
-                total: action.page.total ?? state.total,
+                total: action.page.total ?? (replace ? null : state.total),
                 loading: null,
+                reloading: false,
                 autoPages: action.auto ? state.autoPages + 1 : state.autoPages,
             };
         }
 
         case 'pageFailed':
-            return { ...state, loading: null, error: action.fault };
+            return { ...state, loading: null, reloading: false, error: action.fault };
 
         case 'detailRequested': {
             const details = { ...state.details };
@@ -139,6 +176,20 @@ export function reduce(state: State, action: Action): State {
 
         case 'enabledKnown':
             return { ...state, enabled: action.enabled };
+
+        case 'restoreRequested':
+            return state.restore.status === 'busy'
+                ? state
+                : { ...state, restore: { status: 'busy', id: action.id, columns: action.columns } };
+
+        case 'restoreDone':
+            return { ...state, restore: { status: 'done', columns: action.columns } };
+
+        case 'restoreFailed':
+            return { ...state, restore: { status: 'failed', id: action.id, columns: action.columns, fault: action.fault } };
+
+        case 'restoreDismissed':
+            return { ...state, restore: { status: 'idle' } };
 
         default:
             return state;

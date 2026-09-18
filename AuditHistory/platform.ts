@@ -14,6 +14,7 @@
 import { IInputs } from './generated/ManifestTypes';
 import { bareId, Row } from './audit/rows';
 import { detailsPath, isLogicalName, ORGANIZATION_QUERY, tableDefinitionPath } from './audit/query';
+import { WriteApi } from './data/Restorer';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -52,6 +53,32 @@ export interface HostReading {
     columnScope: boolean;
     pageSize: number | null;
     sampleData: string | null;
+    /* ---- the write half, each surface a host can withhold on its own ---- */
+    /** The `showRestore` input. */
+    showRestore: boolean;
+    /** `context.webAPI` when it can write; `null` on canvas or a declined feature. */
+    writeAPI: WriteApi | null;
+    /** `mode.isControlDisabled` — true on a read-only form, which is where a write has no business. */
+    disabled: boolean;
+    /**
+     * `utils.hasEntityPrivilege(table, Write, Basic)` — `false` is the user
+     * who may not, `null` is a host that cannot say (no Utility, no table).
+     * The two are different: one hides Restore, the other leaves it to the
+     * write's own refusal.
+     */
+    writePrivilege: boolean | null;
+    /** The platform's confirm dialog, or `null` where the host has none — then Restore is not offered. */
+    confirm: ((strings: ConfirmStrings) => Promise<boolean>) | null;
+    /** Reopens the current record through `navigation.openForm`, or `null`. */
+    openRecord: (() => Promise<void>) | null;
+    /**
+     * Whether columns take an update, from `getEntityMetadata`'s
+     * `IsValidForUpdate` when the item carries it; `null` per column when
+     * the host does not say, which is "not known to be refused".
+     */
+    updatable: ((table: string, columns: string[]) => Promise<Record<string, boolean | null>>) | null;
+    /** The user's own name, for the demo route's restore row. */
+    userName: string;
     /** The maker's label, for the accessible name. */
     label: string;
     readable: boolean;
@@ -60,6 +87,109 @@ export interface HostReading {
     /** `true`, `false`, or `undefined` for a host that publishes no theme. */
     dark: boolean | undefined;
     allocatedWidth: number | null;
+}
+
+export interface ConfirmStrings {
+    title?: string;
+    subtitle?: string;
+    text: string;
+    confirmButtonLabel?: string;
+    cancelButtonLabel?: string;
+}
+
+/** Write = 3, Basic = 0 — from the typings' `PrivilegeType` and `PrivilegeDepth` (Read is 2, not 3). */
+export const PRIVILEGE_WRITE = 3;
+export const DEPTH_BASIC = 0;
+
+/**
+ * `utils.hasEntityPrivilege` is synchronous and answers about the user's
+ * roles; a host without `utils`, or one whose method throws, is `null`.
+ */
+export function readWritePrivilege(context: ComponentFramework.Context<IInputs>, table: string): boolean | null {
+    const utils = (context as any).utils;
+
+    if (table === '' || typeof utils?.hasEntityPrivilege !== 'function') {
+        return null;
+    }
+
+    try {
+        const answer = utils.hasEntityPrivilege(table, PRIVILEGE_WRITE, DEPTH_BASIC);
+
+        return typeof answer === 'boolean' ? answer : null;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * `openConfirmDialog` resolves `{ confirmed }` — **a cancel is a resolve**,
+ * and a host that refuses to open the dialog rejects; both are "nothing
+ * happened" here, never an error the user did not cause.
+ */
+function confirmReader(context: ComponentFramework.Context<IInputs>): HostReading['confirm'] {
+    const navigation = (context as any).navigation;
+
+    if (typeof navigation?.openConfirmDialog !== 'function') {
+        return null;
+    }
+
+    return (strings) =>
+        Promise.resolve()
+            .then(() => navigation.openConfirmDialog(strings))
+            .then((response: any) => response?.confirmed === true, () => false);
+}
+
+function openRecordReader(context: ComponentFramework.Context<IInputs>, table: string, recordId: string | null): HostReading['openRecord'] {
+    const navigation = (context as any).navigation;
+
+    if (typeof navigation?.openForm !== 'function' || table === '' || recordId === null) {
+        return null;
+    }
+
+    return () => Promise.resolve().then(() => navigation.openForm({ entityName: table, entityId: recordId })).then(() => undefined);
+}
+
+/**
+ * `IsValidForUpdate` off the metadata item when it is there. SPEC.md R6 is
+ * the question; until it is answered the reader is honest about absence:
+ * an item without the member answers `null`, and `null` refuses nothing.
+ */
+function updatableReader(context: ComponentFramework.Context<IInputs>): HostReading['updatable'] {
+    const utils = (context as any).utils;
+
+    if (typeof utils?.getEntityMetadata !== 'function') {
+        return null;
+    }
+
+    return (table: string, columns: string[]) =>
+        utils.getEntityMetadata(table, columns).then((metadata: any) => {
+            const out: Record<string, boolean | null> = {};
+            const attributes = metadata?.Attributes;
+
+            for (const column of columns) {
+                let attribute: any;
+
+                try {
+                    attribute = typeof attributes?.get === 'function' ? attributes.get(column) : attributes?.[column];
+                } catch {
+                    attribute = undefined;
+                }
+
+                const valid = attribute?.IsValidForUpdate;
+
+                out[column] = typeof valid === 'boolean' ? valid : null;
+            }
+
+            return out;
+        }, () => {
+            const out: Record<string, boolean | null> = {};
+
+            for (const column of columns) {
+                out[column] = null;
+            }
+
+            return out;
+        });
 }
 
 /** `attributes.LogicalName`, when it is a logical name. */
@@ -339,6 +469,14 @@ export function readHost(context: ComponentFramework.Context<IInputs>): HostRead
         columnScope: inputs?.columnScope?.raw === true,
         pageSize: typeof pageSize === 'number' ? pageSize : null,
         sampleData: typeof sample === 'string' ? sample : null,
+        showRestore: inputs?.showRestore?.raw === true,
+        writeAPI: webAPI && typeof webAPI.updateRecord === 'function' ? (webAPI as WriteApi) : null,
+        disabled: context.mode.isControlDisabled === true,
+        writePrivilege: readWritePrivilege(context, record.table),
+        confirm: confirmReader(context),
+        openRecord: openRecordReader(context, record.table, record.recordId),
+        updatable: updatableReader(context),
+        userName: typeof context.userSettings?.userName === 'string' ? context.userSettings.userName : '',
         label: context.mode.label,
         // Compared against `false`, never read as a boolean — an unmapped
         // optional binding is `{}` and a column with no profile is `undefined`.

@@ -43,14 +43,25 @@ function toChange(raw: any): Change | null {
 
     const oldText = raw.old === null || raw.old === undefined ? '' : String(raw.old);
     const newText = raw.new === null || raw.new === undefined ? '' : String(raw.new);
-
-    return {
+    const change: Change = {
         column,
         kind: oldText === '' ? 'set' : newText === '' ? 'cleared' : 'changed',
         oldText,
         newText,
         truncated: isTruncated(oldText) || isTruncated(newText),
     };
+
+    // The sample has no wire under it, so its text is its raw: a restore on
+    // the demo route writes the text back into the sample.
+    if (oldText !== '') {
+        change.oldRaw = oldText;
+    }
+
+    if (newText !== '') {
+        change.newRaw = newText;
+    }
+
+    return change;
 }
 
 function toDetail(raw: any): Detail {

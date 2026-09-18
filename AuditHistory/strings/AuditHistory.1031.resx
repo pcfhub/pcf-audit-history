@@ -73,6 +73,12 @@
   <data name="columnScope_Desc" xml:space="preserve">
     <value>Ein: nur Änderungen der gebundenen Spalte. Aus: jede geprüfte Änderung des Datensatzes.</value>
   </data>
+  <data name="showRestore_Name" xml:space="preserve">
+    <value>Wiederherstellen anzeigen</value>
+  </data>
+  <data name="showRestore_Desc" xml:space="preserve">
+    <value>Ein: Jeder Wert einer Aktualisierung kann nach einer Bestätigung mit einer Schaltfläche wiederhergestellt werden. Aus: Der Verlauf ist schreibgeschützt.</value>
+  </data>
   <data name="pageSize_Name" xml:space="preserve">
     <value>Seitengröße</value>
   </data>
@@ -243,5 +249,50 @@
   </data>
   <data name="AuditHistory_ActionOther" xml:space="preserve">
     <value>Aktion {0}</value>
+  </data>
+  <data name="AuditHistory_Restore" xml:space="preserve">
+    <value>Wiederherstellen</value>
+  </data>
+  <data name="AuditHistory_RestoreAll" xml:space="preserve">
+    <value>Alle {0} wiederherstellen</value>
+  </data>
+  <data name="AuditHistory_Restoring" xml:space="preserve">
+    <value>Wird wiederhergestellt…</value>
+  </data>
+  <data name="AuditHistory_RestoreConfirmTitle" xml:space="preserve">
+    <value>Diesen Wert wiederherstellen?</value>
+  </data>
+  <data name="AuditHistory_RestoreConfirmOne" xml:space="preserve">
+    <value>{0} wird auf „{1}“ zurückgesetzt. Die Änderung wird im Überwachungsverlauf aufgezeichnet.</value>
+  </data>
+  <data name="AuditHistory_RestoreConfirmClear" xml:space="preserve">
+    <value>{0} wird geleert. Die Änderung wird im Überwachungsverlauf aufgezeichnet.</value>
+  </data>
+  <data name="AuditHistory_RestoreConfirmMany" xml:space="preserve">
+    <value>{0} Spalten werden auf ihre früheren Werte zurückgesetzt. Die Änderung wird im Überwachungsverlauf aufgezeichnet.</value>
+  </data>
+  <data name="AuditHistory_RestoreConfirmButton" xml:space="preserve">
+    <value>Wiederherstellen</value>
+  </data>
+  <data name="AuditHistory_Cancel" xml:space="preserve">
+    <value>Abbrechen</value>
+  </data>
+  <data name="AuditHistory_Restored" xml:space="preserve">
+    <value>{0} wiederhergestellt.</value>
+  </data>
+  <data name="AuditHistory_RestoredStale" xml:space="preserve">
+    <value>Das Formular zeigt den früheren Wert, bis es aktualisiert wird.</value>
+  </data>
+  <data name="AuditHistory_Refresh" xml:space="preserve">
+    <value>Aktualisieren</value>
+  </data>
+  <data name="AuditHistory_Dismiss" xml:space="preserve">
+    <value>Schließen</value>
+  </data>
+  <data name="AuditHistory_RestoreFailed" xml:space="preserve">
+    <value>Der Wert konnte nicht wiederhergestellt werden: {0}</value>
+  </data>
+  <data name="AuditHistory_NoWritePrivilege" xml:space="preserve">
+    <value>Sie sind nicht berechtigt, diesen Datensatz zu ändern.</value>
   </data>
 </root>

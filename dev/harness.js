@@ -114,6 +114,7 @@
             clientUrl: clientUrl,
             inputs: {
                 columnScope: document.getElementById('harness-scope').checked,
+                showRestore: document.getElementById('harness-restore').checked,
                 pageSize: Number(document.getElementById('harness-pagesize').value),
                 recordId: document.getElementById('harness-recordid').value,
                 recordEntity: document.getElementById('harness-recordentity').value,

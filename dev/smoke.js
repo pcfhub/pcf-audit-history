@@ -395,6 +395,8 @@ const St = load('state/reducer');
 const Em = load('state/emptyState');
 const Sp = load('sample/parseSampleData');
 const Ds = load('data/AuditSource');
+const Rs = load('audit/restore');
+const Wr = load('data/Restorer');
 const P = load('platform');
 const Cm = load('components/AuditHistoryControl');
 
@@ -462,6 +464,45 @@ check('the same text on both sides is not a change', Df.diffAttributes({ name: '
 check('annotation keys never become columns', Df.diffAttributes({}, { '_ownerid_value@Microsoft.Dynamics.CRM.lookuplogicalname': 'team', _ownerid_value: 'x' }, []).map((c) => c.column).join() === 'ownerid');
 check('a money column\'s _base shadow is folded into it', Df.diffAttributes({ creditlimit: 30, creditlimit_base: 30 }, { creditlimit: 40, creditlimit_base: 40 }, []).map((c) => c.column).join() === 'creditlimit' && Df.diffAttributes({}, { revenue_base: 1 }, []).map((c) => c.column).join() === 'revenue_base');
 check('columnsOf reads an attributes detail and nothing else', Df.columnsOf(two).join() === 'statecode,statuscode' && Df.columnsOf(share).length === 0);
+
+/* ------------------------------------------- the raw sides, for a restore */
+
+const money = Df.diffDetail(detailOf(17)).changes[0];
+check('a change keeps the wire\'s raw value on each side beside the text — a money stays a number', money.oldRaw === 50000 && money.newRaw === 75000 && money.oldText === '$50,000.00', JSON.stringify(money));
+check('a choice keeps its integer, a Two Options its boolean, text its string', Df.diffDetail(detailOf(4)).changes[0].oldRaw === 1 && Df.diffDetail(detailOf(24)).changes[0].oldRaw === false && Df.diffDetail(detailOf(11)).changes[0].oldRaw === 'Bonn');
+check('a set line has no old side at all, and a cleared line\'s new side is null', setLookup.changes[0].oldRaw === undefined && setLookup.changes[0].newRaw === 'p1' && cleared.changes[0].newRaw === null && cleared.changes[0].oldRaw === 'https://www.contoso.de');
+check('a lookup carries the two annotations a write needs, from whichever side had them', setLookup.changes[0].lookup && setLookup.changes[0].lookup.navigationProperty === 'parentaccountid' && setLookup.changes[0].lookup.target === 'account' && Df.diffDetail(detailOf(7)).changes[0].lookup.target === 'team', JSON.stringify(setLookup.changes[0].lookup));
+check('a cleared lookup takes its annotations from the old side, which is the one that has them', (() => {
+    const c = Df.diffAttributes({ _parentaccountid_value: 'p1', '_parentaccountid_value@Microsoft.Dynamics.CRM.associatednavigationproperty': 'parentaccountid', '_parentaccountid_value@Microsoft.Dynamics.CRM.lookuplogicalname': 'account' }, { _parentaccountid_value: null }, [])[0];
+    return c.kind === 'cleared' && c.lookup.navigationProperty === 'parentaccountid' && c.lookup.target === 'account' && c.oldRaw === 'p1' && c.newRaw === null;
+})());
+check('a _x_value key without its annotations is still a lookup — with empty names, never a string column', (() => {
+    const c = Df.diffAttributes({ _parentaccountid_value: 'p1' }, { _parentaccountid_value: 'r1' }, [])[0];
+    return c.lookup && c.lookup.navigationProperty === '' && c.lookup.target === '' && c.oldRaw === 'p1';
+})());
+check('a primitive has no lookup', money.lookup === undefined);
+
+/* ----------------------------------------------------------- the restore */
+
+const allow = () => null;
+check('a line of an Update can go back; any other action cannot', Rs.refusal(money, 2, null) === null && Rs.refusal(money, 1, null) === 'action' && Rs.refusal(money, 41, null) === 'action' && Rs.refusal(money, 13, null) === 'action');
+check('state, status, owner and the platform\'s bookkeeping are never offered, nor a composite or a _base shadow', ['statecode', 'statuscode', 'ownerid', 'createdon', 'modifiedby', 'address1_composite', 'creditlimit_base'].every((column) => Rs.refusal({ ...money, column }, 2, null) === 'column'));
+check('the metadata\'s no is a no; its silence is not', Rs.refusal(money, 2, false) === 'not-updatable' && Rs.refusal(money, 2, true) === null && Rs.refusal(money, 2, null) === null);
+check('a value the platform cut is not written back', Rs.refusal(Df.diffDetail(detailOf(5)).changes[0], 2, null) === 'truncated');
+check('a set line goes back as a clear; a changed line without its old side does not', Rs.refusal(setLookup.changes[0], 2, null) === null && Rs.refusal({ ...money, oldRaw: undefined, kind: 'changed' }, 2, null) === 'no-old-side');
+check('a lookup without its annotations is refused by name', Rs.refusal({ ...money, lookup: { navigationProperty: '', target: 'account' } }, 2, null) === 'lookup-unnamed');
+check('restorable() keeps the lines that can go back, in order', Rs.restorable(Df.diffDetail(detailOf(25)).changes, 2, allow).map((c) => c.column).join() === 'address1_city,address1_postalcode' && Rs.restorable(two.changes, 41, allow).length === 0);
+
+const planned = Rs.plan([money, Df.diffDetail(detailOf(4)).changes[0], Df.diffDetail(detailOf(24)).changes[0], setLookup.changes[0]], { account: 'accounts' });
+check(
+    'the payload is the raw old side per column — number, integer, boolean — and a set lookup goes back as a null bind',
+    planned.payload.creditlimit === 50000 && planned.payload.industrycode === 1 && planned.payload.donotemail === false
+        && planned.payload['parentaccountid@odata.bind'] === null && planned.columns.join() === 'creditlimit,industrycode,donotemail,parentaccountid' && planned.refused.length === 0,
+    JSON.stringify(planned),
+);
+check('a lookup with a value binds /<set>(<bare guid>) from the target\'s entity set', Rs.plan([{ ...setLookup.changes[0], kind: 'changed', oldRaw: '{P1}' }], { account: 'accounts' }).payload['parentaccountid@odata.bind'] === '/accounts(p1)');
+check('a lookup whose target has no entity set is refused, not guessed', (() => { const q = Rs.plan([{ ...setLookup.changes[0], kind: 'changed', oldRaw: 'p1' }], {}); return q.refused.join() === 'parentaccountid' && Object.keys(q.payload).length === 0; })());
+check('targetsOf names the tables whose sets a plan needs — only where there is a value to bind', Rs.targetsOf([setLookup.changes[0], { ...setLookup.changes[0], oldRaw: 'p1' }, money]).join() === 'account');
 
 /* ------------------------------------------------------------ the queries */
 
@@ -573,6 +614,13 @@ check('without contextInfo the two inputs stand in, validated', (() => {
 })());
 check('contextInfo wins over the inputs', P.resolveRecord(ctxWith({ contextInfo: RECORD, inputs: { recordId: 'ffffffff-0000-0000-0000-000000000000', recordEntity: 'contact' } })).recordId === G1);
 check('the bound column is read off attributes.LogicalName, or is empty on canvas', P.resolveBoundColumn({ attributes: { LogicalName: 'Name' } }) === 'name' && P.resolveBoundColumn({}) === '');
+check('the write privilege is asked as Write (3) at Basic (0), and a host without utils answers null', (() => {
+    const yes = ctxWith({ contextInfo: RECORD });
+    const no = ctxWith({ contextInfo: RECORD, hasPrivilege: false });
+    return P.readWritePrivilege(yes, 'account') === true && P.readWritePrivilege(no, 'account') === false && P.readWritePrivilege(ctxWith({ utils: false }), 'account') === null
+        && P.readWritePrivilege(yes, '') === null && P.PRIVILEGE_WRITE === 3 && P.DEPTH_BASIC === 0
+        && yes.utils && (yes.utils.hasEntityPrivilege('account', 3, 0), true);
+})());
 check('the client URL comes from page.getClientUrl, and is null without it', (() => {
     const url = host.nextClientUrl();
     return P.lookupClientUrl(ctxWith({ clientUrl: url })) === url && P.lookupClientUrl(ctxWith({ page: false })) === null;
@@ -675,7 +723,80 @@ async function sources() {
     check('the sample source scopes to a column the way the attribute function would', (await Ds.createSampleSource(sample, 10, 'name').loadPage(null)).rows.length === 2);
 
     check('isPrivilegeFault reads the code or the message', Ds.isPrivilegeFault({ errorCode: 2147746336, message: 'x' }) && Ds.isPrivilegeFault({ message: 'Principal user is missing prvReadAuditSummary privilege.' }) && !Ds.isPrivilegeFault({ message: 'Record Is Unavailable.' }));
+
+    /* ------------------------------------------- the live restorer, on the rig */
+
+    const writeUrl = host.nextClientUrl();
+    const writeCtx = ctxWith({ clientUrl: writeUrl, contextInfo: RECORD });
+    const writeHost = P.readHost(writeCtx);
+    const writer = Wr.createLiveRestorer({ webAPI: writeCtx.webAPI, table: 'account', recordId: 'c1', entitySet: writeHost.entitySet });
+    const history = Ds.createLiveSource({ ...options, webAPI: writeCtx.webAPI, clientUrl: writeUrl });
+    const before = await history.loadPage(null);
+    await writer.restore([Df.diffDetail(detailOf(10)).changes[0]]);
+    const readBack = await writeCtx.webAPI.retrieveRecord('account', 'c1', '?$select=revenue');
+    const after = await history.loadPage(null);
+    check(
+        'a restore writes the old side through updateRecord, and the next page 1 lists it first — an Update by this user, the sides swapped',
+        readBack.revenue === 100000000 && after.rows.length === before.rows.length && after.total === before.total + 1
+            && after.rows[0].id !== before.rows[0].id && after.rows[0].who === 'Rig User' && after.rows[0].action === 2
+            && after.details[after.rows[0].id].changes[0].column === 'revenue' && after.details[after.rows[0].id].changes[0].oldRaw === 120000000 && after.details[after.rows[0].id].changes[0].newRaw === 100000000,
+        JSON.stringify([readBack, after.rows[0], after.details[after.rows[0].id]]),
+    );
+    await writer.restore([setLookup.changes[0]]);
+    const clearedBack = await writeCtx.webAPI.retrieveRecord('account', 'c1', '?$select=_parentaccountid_value');
+    check('restoring a set lookup clears it — a null bind on the annotation\'s navigation property', clearedBack._parentaccountid_value === null, JSON.stringify(clearedBack));
+    const restoredLookup = (await history.loadPage(null)).details;
+    const newestLookup = restoredLookup[Object.keys(restoredLookup)[0]];
+    await writer.restore([newestLookup.changes[0]]);
+    const setBack = await writeCtx.webAPI.retrieveRecord('account', 'c1', '?$select=_parentaccountid_value');
+    check('… and restoring that restore sets it back, the entity set read from the target\'s metadata', setBack._parentaccountid_value === 'p1' && setBack['_parentaccountid_value' + Rw.FORMATTED] === 'Contoso Europe', JSON.stringify(setBack));
+    check('the fresh host still holds the fixture\'s own values — one host\'s write is not another\'s', (await ctxWith({ clientUrl: host.nextClientUrl(), contextInfo: RECORD }).webAPI.retrieveRecord('account', 'c1', '?$select=revenue,_parentaccountid_value')).revenue === 120000000 && (await host.createContext({ getString: marked, fixture, clientUrl: host.nextClientUrl() }).webAPI.retrieveRecord('account', 'c1', '?$select=_parentaccountid_value'))._parentaccountid_value === 'p1');
+    fault = null;
+    await writer.restore([{ ...money, lookup: { navigationProperty: 'nosuchnav', target: 'account' }, oldRaw: 'p1' }]).catch((e) => { fault = e; });
+    check('a bind the server does not know is the measured undeclared-property fault, not a privilege one', fault && fault.privilege === false && /undeclared property 'nosuchnav'/.test(fault.message), JSON.stringify(fault));
+    fault = null;
+    const blindCalls = [];
+    const blindCtx = ctxWith({ clientUrl: host.nextClientUrl(), contextInfo: RECORD, calls: blindCalls });
+    await Wr.createLiveRestorer({ webAPI: blindCtx.webAPI, table: 'account', recordId: 'c1', entitySet: () => Promise.resolve(null) })
+        .restore([{ ...setLookup.changes[0], kind: 'changed', oldRaw: 'p1' }]).catch((e) => { fault = e; });
+    check('a lookup whose target the metadata cannot name is refused before any write', fault && /No entity set for parentaccountid/.test(fault.message) && !blindCalls.some((c) => c.startsWith('webAPI.updateRecord')), JSON.stringify(fault));
+    const refusingCtx = ctxWith({ clientUrl: host.nextClientUrl(), contextInfo: RECORD, updateRecord: false });
+    fault = null;
+    await Wr.createLiveRestorer({ webAPI: refusingCtx.webAPI, table: 'account', recordId: 'c1', entitySet: () => Promise.resolve(null) }).restore([money]).catch((e) => { fault = e; });
+    check('a refused write is a fault with the server\'s sentence', fault && fault.privilege === false && fault.message === 'The record could not be updated.', JSON.stringify(fault));
+    fault = null;
+    await writer.restore([]).then(() => { fault = 'resolved'; });
+    check('nothing to restore writes nothing and resolves', fault === 'resolved');
+
+    /* ------------------------------------------------ the sample restorer */
+
+    const doc = Sp.parseSampleData(JSON.stringify(sampleDoc));
+    const sampleWriter = Wr.createSampleRestorer(doc, { who: 'You', now: () => ({ when: '2026-09-19T10:00:00Z', whenText: '9/19/2026 10:00 AM' }) });
+    const sampleSrc = Ds.createSampleSource(doc, 10);
+    const sampleBefore = (await sampleSrc.loadPage(null)).rows.length;
+    await sampleWriter.restore([doc.details.s1.changes[0]]);
+    const sampleAfter = await sampleSrc.loadPage(null);
+    check(
+        'on the demo route a restore becomes the newest row of the sample, by the user, the sides swapped, and the source lists it',
+        sampleAfter.rows.length === sampleBefore + 1 && sampleAfter.rows[0].who === 'You' && sampleAfter.rows[0].action === 2 && sampleAfter.rows[0].whenText === '9/19/2026 10:00 AM'
+            && sampleAfter.details[sampleAfter.rows[0].id].changes[0].oldText === doc.details.s1.changes[0].newText && sampleAfter.details[sampleAfter.rows[0].id].changes[0].newText === doc.details.s1.changes[0].oldText,
+        JSON.stringify([sampleAfter.rows[0], sampleAfter.details[sampleAfter.rows[0].id]]),
+    );
 }
+
+/* ------------------------------------------------ platform: the dialog */
+
+sources.confirm = async () => {
+    const answers = {};
+    for (const dialogs of ['confirmed', 'cancelled', 'rejected']) {
+        answers[dialogs] = await P.readHost(ctxWith({ contextInfo: RECORD, dialogs })).confirm({ text: 'x' });
+    }
+    check('confirm resolves true only on a confirmed dialog — a cancel and a refusal are both false, never a rejection', answers.confirmed === true && answers.cancelled === false && answers.rejected === false, JSON.stringify(answers));
+    check('… and is null where the host has no dialog', P.readHost(ctxWith({ contextInfo: RECORD, dialogs: 'absent' })).confirm === null);
+    const calls = [];
+    await P.readHost(ctxWith({ contextInfo: RECORD, calls })).openRecord();
+    check('openRecord opens the same record through navigation.openForm', calls.some((c) => c.startsWith('navigation.openForm(') && c.includes(G1) && c.includes('"entityName":"account"')), calls.join(' | '));
+};
 
 /* --------------------------------------------- the bundle: the mode ladder */
 
@@ -701,9 +822,22 @@ check('the sample route honours the scope too, and names the column from the sam
     return scoped.scope === 'name' && scoped.columnLabel === 'Account Name' && scoped.sampleLabels.name === 'Account Name';
 })());
 check('readLabels is null without the Utility feature', mount({ contextInfo: RECORD, utils: false }).props().readLabels === null && typeof bound.props().readLabels === 'function');
+check('Restore is off unless showRestore is on', bound.props().canRestore === false && bound.update({ inputs: { showRestore: true } }).props.canRestore === true);
+check('… and off on a read-only form, for a user without Write, without a dialog, or without a Web API that writes', (() => {
+    const on = { showRestore: true };
+    return mount({ contextInfo: RECORD, inputs: on, disabled: true }).props().canRestore === false
+        && mount({ contextInfo: RECORD, inputs: on, hasPrivilege: false }).props().canRestore === false
+        && mount({ contextInfo: RECORD, inputs: on, dialogs: 'absent' }).props().canRestore === false
+        && mount({ contextInfo: RECORD, inputs: on, webAPI: false }).props().canRestore === false
+        && mount({ contextInfo: RECORD, inputs: on, hasNavigation: false }).props().canRestore === false;
+})());
+check('… but a host that cannot say about the privilege is not a refusal', mount({ contextInfo: RECORD, inputs: { showRestore: true }, utils: false }).props().canRestore === true);
+check('the demo route offers Restore with no Web API and no dialog — it simulates both', mount({ webAPI: false, host: 'canvas', inputs: { sampleData: sampleJson, showRestore: true } }).props().canRestore === true && mount({ webAPI: false, inputs: { sampleData: sampleJson } }).props().canRestore === false);
+check('readUpdatable is null without the Utility feature, a function with it', mount({ contextInfo: RECORD, utils: false }).props().readUpdatable === null && typeof bound.props().readUpdatable === 'function');
+check('openRecord is null without openForm or a record', mount({ contextInfo: RECORD, openForm: 'absent' }).props().openRecord === null && mount({}).props().openRecord === null && typeof bound.props().openRecord === 'function');
 check('every sentence comes from the .resx', (() => {
     const strings = bound.props().strings;
-    return Object.values(strings).every((v) => typeof v === 'string' && v.startsWith('resx:AuditHistory_')) && Object.keys(strings).length === 37;
+    return Object.values(strings).every((v) => typeof v === 'string' && v.startsWith('resx:AuditHistory_')) && Object.keys(strings).length === 52;
 })(), String(Object.keys(bound.props().strings).length));
 check('theme and direction are handed down', mount({ contextInfo: RECORD, rtl: true, dark: true }).props().isRTL === true && mount({ contextInfo: RECORD, dark: true }).props().dark === true);
 check('the control writes nothing', JSON.stringify(bound.outputs()) === '{}');
@@ -737,6 +871,44 @@ check('a row with no values to show does not open — no aria-expanded, the butt
     return !m.includes('aria-expanded') && m.includes('disabled') && m.includes('AuditHistory-row--flat') && !m.includes('AuditHistory-values') && m.includes('resx:AuditHistory_NoDetail');
 })());
 check('fill replaces both placeholders', Cm.fill('{0} of {1}', 3, 26) === '3 of 26' && Cm.fill('Only {0}', 'x') === 'Only x');
+
+/* ------------------------------------------------- the row, with Restore */
+
+const restoreHtml = (n, restore) => renderDeep(React.createElement(Cm.ChangeRow, {
+    row: Rw.toRow(audits[n - 1]), detail: { status: 'loaded', detail: Df.diffDetail(detailOf(n)) }, expanded: true, labelOf: (c) => `L:${c}`, strings: { ...rowStrings, restoreFailed: 'Failed: {0}' }, getString: marked, onToggle: () => undefined,
+    restore: restore === undefined ? { state: { status: 'idle' }, updatable: () => null, run: () => undefined } : restore,
+}));
+check('without the write half the table has three columns and no button', !rowHtml({ status: 'loaded', detail: Df.diffDetail(detailOf(4)) }, true).includes('AuditHistory-restore'));
+const oneLine = restoreHtml(4);
+check('with it, an Update\'s line gets a Restore named for the column, and a single line gets no Restore all', oneLine.includes('AuditHistory-restore-cell') && oneLine.includes('resx:AuditHistory_Restore: L:industrycode') && !oneLine.includes('AuditHistory-restore-all'), oneLine);
+const twoLines = restoreHtml(25);
+check('two restorable lines get two Restores and one Restore all', (twoLines.match(/AuditHistory-restore"/g) || []).length === 2 && twoLines.includes('AuditHistory-restore-all') && twoLines.includes('resx:AuditHistory_RestoreAll'));
+check('a Set State row offers nothing, whatever the host — three columns', !restoreHtml(6).includes('AuditHistory-restore'));
+check('a capped line keeps an empty cell while its siblings get the button', (() => { const m = restoreHtml(5); return !m.includes('AuditHistory-restore"'); })());
+check('the metadata\'s no removes the button', !restoreHtml(4, { state: { status: 'idle' }, updatable: () => false, run: () => undefined }).includes('AuditHistory-restore"'));
+check('while a restore is in flight every button is disabled and the line being written says so', (() => {
+    const m = restoreHtml(25, { state: { status: 'busy', id: audits[24].auditid, columns: ['address1_city'] }, updatable: () => null, run: () => undefined });
+    return m.includes('resx:AuditHistory_Restoring') && /AuditHistory-restore"[^>]*disabled/.test(m);
+})());
+check('a failed restore says why on its row — the privilege sentence, or the server\'s', (() => {
+    const a = restoreHtml(4, { state: { status: 'failed', id: audits[3].auditid, columns: ['industrycode'], fault: { message: 'boom', privilege: false } }, updatable: () => null, run: () => undefined });
+    const b = restoreHtml(4, { state: { status: 'failed', id: audits[3].auditid, columns: ['industrycode'], fault: { message: 'x', privilege: true } }, updatable: () => null, run: () => undefined });
+    const other = restoreHtml(4, { state: { status: 'failed', id: 'someone-else', columns: ['x'], fault: { message: 'boom', privilege: false } }, updatable: () => null, run: () => undefined });
+    return a.includes('Failed: boom') && a.includes('role="alert"') && b.includes('resx:AuditHistory_NoWritePrivilege') && !other.includes('boom');
+})());
+
+/* ---------------------------------------------- the reducer: a restore */
+
+const withRows = St.reduce(St.reduce(St.initialState, { type: 'pageRequested' }), { type: 'pageLoaded', page: { rows: [Rw.toRow(audits[0]), Rw.toRow(audits[1])], details: { [audits[0].auditid]: Df.diffDetail(detailOf(1)) }, next: { kind: 'page', pageNumber: 2 }, total: 26 }, auto: false });
+const busy = St.reduce(withRows, { type: 'restoreRequested', id: 'r', columns: ['name'] });
+check('a restore is single-flight: a second request while one is busy is ignored', busy.restore.status === 'busy' && St.reduce(busy, { type: 'restoreRequested', id: 'other', columns: ['x'] }).restore.id === 'r');
+const done = St.reduce(busy, { type: 'restoreDone', columns: ['name'] });
+const reloading = St.reduce(St.reduce(done, { type: 'reload' }), { type: 'pageRequested' });
+check('reload keeps the rows on screen and the notice, drops the cursor', reloading.rows.length === 2 && reloading.reloading === true && reloading.cursor === null && reloading.restore.status === 'done' && reloading.loading === 'more');
+const replaced = St.reduce(reloading, { type: 'pageLoaded', page: { rows: [Rw.toRow(audits[5]), Rw.toRow(audits[0])], details: {}, next: null, total: 27 }, auto: false });
+check('… and the next page replaces them rather than appending, keeping only the values and open rows that survived', replaced.rows.map((r) => r.id).join() === [audits[5].auditid, audits[0].auditid].join() && replaced.reloading === false && replaced.total === 27 && replaced.details[audits[0].auditid] === undefined);
+check('a failed restore sits on its row; dismiss clears either', St.reduce(busy, { type: 'restoreFailed', id: 'r', columns: ['name'], fault: { message: 'x', privilege: false } }).restore.status === 'failed' && St.reduce(done, { type: 'restoreDismissed' }).restore.status === 'idle');
+check('reset clears a restore too', St.reduce(done, { type: 'reset' }).restore.status === 'idle');
 
 /* ------------------------------------------------------------- teardown */
 
@@ -901,6 +1073,29 @@ async function rigSelfCheck() {
         .catch((error) => { offline = error.constructor.name; });
     check('rig: auditStatus 0 is the offline shape, a TypeError', offline === 'TypeError', offline);
 
+    const writeCtx = ctxWith({ clientUrl: host.nextClientUrl(), contextInfo: RECORD });
+    const rowsBefore = (await writeCtx.webAPI.retrieveMultipleRecords('audit', Qy.auditsQuery('c1'))).entities.length;
+    await writeCtx.webAPI.updateRecord('account', 'c1', { name: 'Renamed', 'parentaccountid@odata.bind': '/accounts(r1)' });
+    const written = await writeCtx.webAPI.retrieveRecord('account', 'c1', '?$select=name,_parentaccountid_value');
+    const audited = (await writeCtx.webAPI.retrieveMultipleRecords('audit', Qy.auditsQuery('c1'))).entities;
+    const auditedDetail = await (await fetch(`${writeCtx.page.getClientUrl()}/api/data/v9.2/audits(${audited[0].auditid})/Microsoft.Dynamics.CRM.RetrieveAuditDetails`, { headers: { Prefer: 'odata.include-annotations="*"' } })).json();
+    check(
+        'rig: updateRecord applies to this host\'s row — a primitive under its key, a bind as the lookup with its annotations — and audits it as the newest row by the rig user',
+        written.name === 'Renamed' && written._parentaccountid_value === 'r1' && written['_parentaccountid_value' + Rw.FORMATTED] === 'Contoso Holdings'
+            && audited.length === rowsBefore + 1 && audited[0]['_userid_value' + Rw.FORMATTED] === 'Rig User' && audited[0].action === 2
+            && auditedDetail.AuditDetail.OldValue.name === 'Contoso Deutschland GmbH' && auditedDetail.AuditDetail.NewValue.name === 'Renamed'
+            && auditedDetail.AuditDetail.OldValue._parentaccountid_value === 'p1' && auditedDetail.AuditDetail.NewValue['_parentaccountid_value@Microsoft.Dynamics.CRM.associatednavigationproperty'] === 'parentaccountid',
+        JSON.stringify([written, audited[0], auditedDetail.AuditDetail]),
+    );
+    check('rig: the shared fixture is untouched by a host\'s write', fixture.tables.account.find((r) => r.accountid === 'c1').name === 'Contoso Deutschland GmbH' && !fixture.tables.audit.some((r) => r.auditid.startsWith('ffffffff')));
+    let bindFault = null;
+    await writeCtx.webAPI.updateRecord('account', 'c1', { 'nosuch@odata.bind': '/accounts(r1)' }).catch((e) => { bindFault = e; });
+    let refFault = null;
+    await writeCtx.webAPI.updateRecord('account', 'c1', { 'parentaccountid@odata.bind': '/accounts(nosuchid)' }).catch((e) => { refFault = e; });
+    check('rig: an undeclared bind and a bind to a missing record refuse the way the server does', bindFault && /undeclared property 'nosuch'/.test(bindFault.message) && refFault && refFault.title === 'Record Is Unavailable', JSON.stringify([bindFault && bindFault.errorCode, refFault && refFault.errorCode]));
+    check('rig: userSettings names the user the write is audited as', writeCtx.userSettings.userName === 'Rig User' && typeof writeCtx.userSettings.userId === 'string');
+    check('rig: getEntityMetadata(target).EntitySetName is the target\'s, from the fixture', (await writeCtx.utils.getEntityMetadata('contact')).EntitySetName === 'contacts' && (await writeCtx.utils.getEntityMetadata('account')).EntitySetName === 'accounts');
+
     const metadata = await ctx.utils.getEntityMetadata('account', ['name', 'revenue', 'nosuchcolumn']);
     check(
         'rig: getEntityMetadata(table, columns).Attributes is an item collection of the columns asked for that the fixture names',
@@ -911,8 +1106,8 @@ async function rigSelfCheck() {
     disposeAll();
 }
 
-sources().then(rigSelfCheck).then(report, (error) => {
-    check('the asynchronous half ran to the end', false, String(error && error.stack || error));
+sources().then(sources.confirm).then(rigSelfCheck).then(report, (error) => {
+    check('the asynchronous half ran to the end', false, String(error && error.stack || JSON.stringify(error)));
     report();
 });
 

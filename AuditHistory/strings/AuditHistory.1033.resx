@@ -73,6 +73,12 @@
   <data name="columnScope_Desc" xml:space="preserve">
     <value>On: list only changes to the bound column. Off: every audited change to the record.</value>
   </data>
+  <data name="showRestore_Name" xml:space="preserve">
+    <value>Show Restore</value>
+  </data>
+  <data name="showRestore_Desc" xml:space="preserve">
+    <value>On: each value of an Update can be put back with a Restore button, after a confirmation. Off: the history is read-only.</value>
+  </data>
   <data name="pageSize_Name" xml:space="preserve">
     <value>Page size</value>
   </data>
@@ -243,5 +249,50 @@
   </data>
   <data name="AuditHistory_ActionOther" xml:space="preserve">
     <value>Action {0}</value>
+  </data>
+  <data name="AuditHistory_Restore" xml:space="preserve">
+    <value>Restore</value>
+  </data>
+  <data name="AuditHistory_RestoreAll" xml:space="preserve">
+    <value>Restore all {0}</value>
+  </data>
+  <data name="AuditHistory_Restoring" xml:space="preserve">
+    <value>Restoring…</value>
+  </data>
+  <data name="AuditHistory_RestoreConfirmTitle" xml:space="preserve">
+    <value>Restore this value?</value>
+  </data>
+  <data name="AuditHistory_RestoreConfirmOne" xml:space="preserve">
+    <value>{0} will be set back to “{1}”. The change is recorded in the audit history.</value>
+  </data>
+  <data name="AuditHistory_RestoreConfirmClear" xml:space="preserve">
+    <value>{0} will be cleared. The change is recorded in the audit history.</value>
+  </data>
+  <data name="AuditHistory_RestoreConfirmMany" xml:space="preserve">
+    <value>{0} columns will be set back to their earlier values. The change is recorded in the audit history.</value>
+  </data>
+  <data name="AuditHistory_RestoreConfirmButton" xml:space="preserve">
+    <value>Restore</value>
+  </data>
+  <data name="AuditHistory_Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="AuditHistory_Restored" xml:space="preserve">
+    <value>Restored {0}.</value>
+  </data>
+  <data name="AuditHistory_RestoredStale" xml:space="preserve">
+    <value>The form shows the earlier value until it is refreshed.</value>
+  </data>
+  <data name="AuditHistory_Refresh" xml:space="preserve">
+    <value>Refresh</value>
+  </data>
+  <data name="AuditHistory_Dismiss" xml:space="preserve">
+    <value>Dismiss</value>
+  </data>
+  <data name="AuditHistory_RestoreFailed" xml:space="preserve">
+    <value>The value could not be restored: {0}</value>
+  </data>
+  <data name="AuditHistory_NoWritePrivilege" xml:space="preserve">
+    <value>You do not have permission to change this record.</value>
   </data>
 </root>

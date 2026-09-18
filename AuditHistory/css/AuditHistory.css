@@ -401,3 +401,61 @@
     margin-inline-start: 0;
     flex-basis: 100%;
 }
+
+/* ---- restore: the write half, offered only when showRestore is on ------- */
+
+/*
+ * The notice after a restore sits above the list, in the brand's tinted
+ * surface rather than red or green: the write succeeded, and the sentence
+ * is about the form being behind, which is information rather than a fault.
+ */
+.AuditHistory .AuditHistory-notice {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacingHorizontalS, 8px);
+    margin-bottom: var(--spacingVerticalS, 8px);
+    padding: var(--spacingVerticalXS, 4px) var(--spacingHorizontalS, 8px);
+    border-radius: var(--AuditHistory-radius);
+    background-color: var(--AuditHistory-chip-background);
+    color: var(--AuditHistory-chip-foreground);
+}
+
+.AuditHistory .AuditHistory-notice > span {
+    flex: 1 1 200px;
+}
+
+.AuditHistory .AuditHistory-restore-all {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: var(--spacingVerticalXS, 4px);
+}
+
+/* The fourth column: one button wide, never wrapping, empty on a line that cannot go back. */
+.AuditHistory .AuditHistory-restore-head,
+.AuditHistory .AuditHistory-restore-cell {
+    width: 1%;
+    white-space: nowrap;
+    text-align: end;
+}
+
+.AuditHistory .AuditHistory-restore {
+    color: var(--AuditHistory-foreground-brand);
+}
+
+/* Off-screen for sighted users, read by a screen reader — the restore column's header. */
+.AuditHistory .AuditHistory-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.AuditHistory--narrow .AuditHistory-restore-cell {
+    white-space: normal;
+}

@@ -73,6 +73,12 @@
   <data name="columnScope_Desc" xml:space="preserve">
     <value>Activé : seules les modifications de la colonne liée. Désactivé : toutes les modifications auditées de l’enregistrement.</value>
   </data>
+  <data name="showRestore_Name" xml:space="preserve">
+    <value>Afficher Restaurer</value>
+  </data>
+  <data name="showRestore_Desc" xml:space="preserve">
+    <value>Activé : chaque valeur d’une mise à jour peut être rétablie par un bouton Restaurer, après confirmation. Désactivé : l’historique est en lecture seule.</value>
+  </data>
   <data name="pageSize_Name" xml:space="preserve">
     <value>Taille de page</value>
   </data>
@@ -243,5 +249,50 @@
   </data>
   <data name="AuditHistory_ActionOther" xml:space="preserve">
     <value>Action {0}</value>
+  </data>
+  <data name="AuditHistory_Restore" xml:space="preserve">
+    <value>Restaurer</value>
+  </data>
+  <data name="AuditHistory_RestoreAll" xml:space="preserve">
+    <value>Tout restaurer ({0})</value>
+  </data>
+  <data name="AuditHistory_Restoring" xml:space="preserve">
+    <value>Restauration…</value>
+  </data>
+  <data name="AuditHistory_RestoreConfirmTitle" xml:space="preserve">
+    <value>Restaurer cette valeur ?</value>
+  </data>
+  <data name="AuditHistory_RestoreConfirmOne" xml:space="preserve">
+    <value>{0} reprendra la valeur « {1} ». La modification est consignée dans l’historique d’audit.</value>
+  </data>
+  <data name="AuditHistory_RestoreConfirmClear" xml:space="preserve">
+    <value>{0} sera effacé. La modification est consignée dans l’historique d’audit.</value>
+  </data>
+  <data name="AuditHistory_RestoreConfirmMany" xml:space="preserve">
+    <value>{0} colonnes reprendront leurs valeurs précédentes. La modification est consignée dans l’historique d’audit.</value>
+  </data>
+  <data name="AuditHistory_RestoreConfirmButton" xml:space="preserve">
+    <value>Restaurer</value>
+  </data>
+  <data name="AuditHistory_Cancel" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
+  <data name="AuditHistory_Restored" xml:space="preserve">
+    <value>{0} restauré.</value>
+  </data>
+  <data name="AuditHistory_RestoredStale" xml:space="preserve">
+    <value>Le formulaire affiche l’ancienne valeur tant qu’il n’est pas actualisé.</value>
+  </data>
+  <data name="AuditHistory_Refresh" xml:space="preserve">
+    <value>Actualiser</value>
+  </data>
+  <data name="AuditHistory_Dismiss" xml:space="preserve">
+    <value>Fermer</value>
+  </data>
+  <data name="AuditHistory_RestoreFailed" xml:space="preserve">
+    <value>La valeur n’a pas pu être restaurée : {0}</value>
+  </data>
+  <data name="AuditHistory_NoWritePrivilege" xml:space="preserve">
+    <value>Vous n’avez pas l’autorisation de modifier cet enregistrement.</value>
   </data>
 </root>

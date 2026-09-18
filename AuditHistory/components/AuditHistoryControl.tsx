@@ -1,11 +1,14 @@
 import * as React from 'react';
 import { Button, FluentProvider, Spinner, webDarkTheme, webLightTheme } from '@fluentui/react-components';
-import { AuditRow, Change, Detail } from '../audit/types';
+import { AuditRow, Change, Detail, SourceFault } from '../audit/types';
 import { actionLabel } from '../audit/actions';
 import { columnsOf } from '../audit/diff';
+import { restorable, Updatable } from '../audit/restore';
 import { AuditSource } from '../data/AuditSource';
+import { Restorer } from '../data/Restorer';
+import { ConfirmStrings } from '../platform';
 import { resolveEmpty } from '../state/emptyState';
-import { columnsSeen, DetailState, detailsSettled, initialState, needsAutoContinue, pendingDetails, reduce, visibleRows } from '../state/reducer';
+import { columnsSeen, DetailState, detailsSettled, initialState, needsAutoContinue, pendingDetails, reduce, RestoreState, visibleRows } from '../state/reducer';
 
 /** Every sentence the control can show, already resolved from the .resx. */
 export interface Strings {
@@ -53,6 +56,33 @@ export interface Strings {
     sharedWith: string;
     /** `{0}` is a relationship's name. */
     relationship: string;
+    restore: string;
+    restoreAll: string;
+    restoring: string;
+    restoreConfirmTitle: string;
+    /** `{0}` the column, `{1}` the value it goes back to. */
+    restoreConfirmOne: string;
+    /** `{0}` the column. */
+    restoreConfirmClear: string;
+    /** `{0}` how many columns. */
+    restoreConfirmMany: string;
+    restoreConfirmButton: string;
+    cancel: string;
+    /** `{0}` the columns restored. */
+    restored: string;
+    restoredStale: string;
+    refresh: string;
+    dismiss: string;
+    /** `{0}` the platform's sentence. */
+    restoreFailed: string;
+    noWritePrivilege: string;
+}
+
+/** What `resolve` hands the component: where the history comes from, and where a restore goes. */
+export interface Session {
+    source: AuditSource;
+    /** `null` on a host that cannot write — then Restore is never offered, whatever `canRestore` says. */
+    restorer: Restorer | null;
 }
 
 /** What the control has decided about the host, before any query runs. */
@@ -60,8 +90,8 @@ export type Mode = 'live' | 'sample' | 'not-available' | 'save-first' | 'no-acce
 
 export interface IProps {
     mode: Mode;
-    /** Where the history comes from. `null` in every mode but `live` and `sample`. */
-    resolve: (() => Promise<AuditSource>) | null;
+    /** Where the history comes from, and where a restore goes. `null` in every mode but `live` and `sample`. */
+    resolve: (() => Promise<Session>) | null;
     /**
      * Changes whenever anything the list was built from changes — the record,
      * the scope, the page size, the sample — and the list starts over. This
@@ -77,6 +107,14 @@ export interface IProps {
     readLabels: ((columns: string[]) => Promise<Record<string, string>>) | null;
     /** The sample's own labels, on the demo route. */
     sampleLabels: Record<string, string>;
+    /** Restore is on and every host half of it exists — see `index.ts`. */
+    canRestore: boolean;
+    /** The platform's confirm dialog; `null` where there is none. */
+    confirm: ((strings: ConfirmStrings) => Promise<boolean>) | null;
+    /** Reopens the record, for the notice after a restore; `null` where the host cannot. */
+    openRecord: (() => Promise<void>) | null;
+    /** Whether columns take an update, or `null` without the Utility feature. */
+    readUpdatable: ((columns: string[]) => Promise<Record<string, boolean | null>>) | null;
     visible: boolean;
     label: string;
     isRTL: boolean;
@@ -113,7 +151,7 @@ const Chevron = (): React.ReactElement => (
 
 export function AuditHistoryControl(props: IProps): React.ReactElement | null {
     const [state, dispatch] = React.useReducer(reduce, initialState);
-    const source = React.useRef<AuditSource | null>(null);
+    const session = React.useRef<Session | null>(null);
     /*
      * Ids with a detail fetch in flight. The reducer marks them `loading`
      * too, but a dispatch from inside an effect re-runs the effect before the
@@ -123,34 +161,88 @@ export function AuditHistoryControl(props: IProps): React.ReactElement | null {
     const inflight = React.useRef(new Set<string>());
     const [labels, setLabels] = React.useState<Record<string, string>>({});
     const askedLabels = React.useRef(new Set<string>());
+    const [updatable, setUpdatable] = React.useState<Record<string, boolean | null>>({});
+    const askedUpdatable = React.useRef(new Set<string>());
     const rootRef = React.useRef<HTMLDivElement>(null);
     const [narrow, setNarrow] = React.useState(false);
-    const { mode, resolve, sourceKey, scope, readLabels, sampleLabels, strings } = props;
+    const { mode, resolve, sourceKey, scope, readLabels, readUpdatable, sampleLabels, strings, confirm } = props;
     // The reducer's latest state, for a callback that must not close over a stale one.
     const stateRef = React.useRef(state);
     stateRef.current = state;
 
-    const loadPage = React.useCallback((auto: boolean) => {
-        const current = source.current;
+    /** `fromStart` reads page 1 again — after a restore — rather than the cursor. */
+    const loadPage = React.useCallback((auto: boolean, fromStart = false) => {
+        const current = session.current;
 
         if (!current) {
             return;
         }
 
+        if (fromStart) {
+            dispatch({ type: 'reload' });
+        }
+
         dispatch({ type: 'pageRequested' });
-        current.loadPage(stateRef.current.cursor).then(
+        current.source.loadPage(fromStart ? null : stateRef.current.cursor).then(
             (page) => {
-                if (source.current === current) {
+                if (session.current === current) {
                     dispatch({ type: 'pageLoaded', page, auto });
                 }
             },
             (fault) => {
-                if (source.current === current) {
+                if (session.current === current) {
                     dispatch({ type: 'pageFailed', fault });
                 }
             },
         );
     }, []);
+
+    /*
+     * A restore: the dialog, then the write, then page 1 again so the
+     * restore shows as the newest row — the platform audits it like any
+     * change, and that row is the proof. Single-flight through the reducer.
+     */
+    const restore = React.useCallback((row: AuditRow, lines: Change[], labelOf: (column: string) => string) => {
+        const current = session.current;
+
+        if (!current || !current.restorer || lines.length === 0 || stateRef.current.restore.status === 'busy') {
+            return;
+        }
+
+        const restorer = current.restorer;
+        const columns = lines.map((line) => line.column);
+        const text = lines.length > 1
+            ? fill(strings.restoreConfirmMany, lines.length)
+            : lines[0].oldText === ''
+                ? fill(strings.restoreConfirmClear, labelOf(lines[0].column))
+                : fill(strings.restoreConfirmOne, labelOf(lines[0].column), lines[0].oldText);
+        const ask = confirm
+            ? confirm({ title: strings.restoreConfirmTitle, text, confirmButtonLabel: strings.restoreConfirmButton, cancelButtonLabel: strings.cancel })
+            // The demo route: no dialog to ask, and nothing to lose.
+            : Promise.resolve(mode === 'sample');
+
+        void ask.then((confirmed) => {
+            if (!confirmed || session.current !== current) {
+                return undefined;
+            }
+
+            dispatch({ type: 'restoreRequested', id: row.id, columns });
+
+            return restorer.restore(lines).then(
+                () => {
+                    if (session.current === current) {
+                        dispatch({ type: 'restoreDone', columns });
+                        loadPage(false, true);
+                    }
+                },
+                (fault: SourceFault) => {
+                    if (session.current === current) {
+                        dispatch({ type: 'restoreFailed', id: row.id, columns, fault });
+                    }
+                },
+            );
+        });
+    }, [confirm, strings, mode, loadPage]);
 
     /*
      * Start over whenever the source changes. The `alive` flag is what keeps a
@@ -161,10 +253,12 @@ export function AuditHistoryControl(props: IProps): React.ReactElement | null {
         let alive = true;
 
         dispatch({ type: 'reset' });
-        source.current = null;
+        session.current = null;
         inflight.current.clear();
         askedLabels.current.clear();
+        askedUpdatable.current.clear();
         setLabels({});
+        setUpdatable({});
 
         if (!resolve || (mode !== 'live' && mode !== 'sample')) {
             return undefined;
@@ -175,10 +269,10 @@ export function AuditHistoryControl(props: IProps): React.ReactElement | null {
                 return;
             }
 
-            source.current = resolved;
+            session.current = resolved;
             loadPage(false);
-            resolved.probeEnabled().then((enabled) => {
-                if (alive && source.current === resolved) {
+            resolved.source.probeEnabled().then((enabled) => {
+                if (alive && session.current === resolved) {
                     dispatch({ type: 'enabledKnown', enabled });
                 }
             });
@@ -195,7 +289,7 @@ export function AuditHistoryControl(props: IProps): React.ReactElement | null {
      * them cannot say what it touched.
      */
     React.useEffect(() => {
-        const current = source.current;
+        const current = session.current;
 
         if (!current) {
             return;
@@ -211,16 +305,16 @@ export function AuditHistoryControl(props: IProps): React.ReactElement | null {
 
         for (const id of pending) {
             inflight.current.add(id);
-            current
+            current.source
                 .loadDetail(id)
                 .then(
                     (detail) => {
-                        if (source.current === current) {
+                        if (session.current === current) {
                             dispatch({ type: 'detailLoaded', id, detail });
                         }
                     },
                     (fault) => {
-                        if (source.current === current) {
+                        if (session.current === current) {
                             dispatch({ type: 'detailFailed', id, fault });
                         }
                     },
@@ -258,6 +352,29 @@ export function AuditHistoryControl(props: IProps): React.ReactElement | null {
     }, [state, readLabels]);
 
     /*
+     * Whether the columns seen take an update, asked once each and only
+     * when a restore could be offered — the answer decides which lines get
+     * a Restore, and `null` (the host did not say) refuses none.
+     */
+    React.useEffect(() => {
+        if (!readUpdatable || !props.canRestore) {
+            return;
+        }
+
+        const unknown = columnsSeen(state).filter((column) => !askedUpdatable.current.has(column));
+
+        if (unknown.length === 0) {
+            return;
+        }
+
+        unknown.forEach((column) => askedUpdatable.current.add(column));
+        readUpdatable(unknown).then(
+            (found) => setUpdatable((previous) => ({ ...previous, ...found })),
+            () => undefined,
+        );
+    }, [state, readUpdatable, props.canRestore]);
+
+    /*
      * Narrow is measured off the root's own width, never off a media query
      * (a form section on a wide screen can be narrow) and never with
      * `container-type` on the root.
@@ -284,6 +401,10 @@ export function AuditHistoryControl(props: IProps): React.ReactElement | null {
     const rows = React.useMemo(() => visibleRows(state, effectiveScope), [state, effectiveScope]);
     const columns = React.useMemo(() => columnsSeen(state), [state]);
     const labelOf = (column: string): string => labels[column] ?? sampleLabels[column] ?? column;
+    const updatableOf: Updatable = (column) => updatable[column] ?? null;
+    // Offered only once the session says it can write — the prop is the
+    // host's half, the restorer the route's.
+    const offerRestore = props.canRestore && session.current?.restorer != null;
 
     if (!props.visible) {
         return null;
@@ -374,6 +495,23 @@ export function AuditHistoryControl(props: IProps): React.ReactElement | null {
 
                 body = (
                     <>
+                        {state.restore.status === 'done' && (
+                            <div className="AuditHistory-notice" role="status">
+                                <span>
+                                    {fill(strings.restored, state.restore.columns.map(labelOf).join(', '))}
+                                    {' '}
+                                    {strings.restoredStale}
+                                </span>
+                                {props.openRecord && (
+                                    <Button appearance="secondary" size="small" onClick={() => void (props.openRecord as () => Promise<void>)().catch(() => undefined)}>
+                                        {strings.refresh}
+                                    </Button>
+                                )}
+                                <Button appearance="subtle" size="small" aria-label={strings.dismiss} onClick={() => dispatch({ type: 'restoreDismissed' })}>
+                                    ×
+                                </Button>
+                            </div>
+                        )}
                         {scope !== null ? (
                             <div className="AuditHistory-toolbar">
                                 <span className="AuditHistory-chip">{fill(strings.onlyColumn, props.columnLabel || labelOf(scope))}</span>
@@ -400,6 +538,7 @@ export function AuditHistoryControl(props: IProps): React.ReactElement | null {
                                     strings={strings}
                                     getString={props.getString}
                                     onToggle={() => dispatch({ type: 'toggle', id: row.id })}
+                                    restore={offerRestore ? { state: state.restore, updatable: updatableOf, run: (lines) => restore(row, lines, labelOf) } : null}
                                 />
                             ))}
                         </ul>
@@ -471,6 +610,13 @@ function Toolbar(props: ToolbarProps): React.ReactElement {
     );
 }
 
+/** The write half handed to a row when Restore is offered; `null` keeps the row read-only. */
+export interface RestoreProps {
+    state: RestoreState;
+    updatable: Updatable;
+    run: (lines: Change[]) => void;
+}
+
 export interface RowProps {
     row: AuditRow;
     detail: DetailState | undefined;
@@ -479,6 +625,7 @@ export interface RowProps {
     strings: Strings;
     getString: (key: string) => string;
     onToggle: () => void;
+    restore?: RestoreProps | null;
 }
 
 /** What a closed row says about its values: the columns, or the kind of change. */
@@ -562,15 +709,21 @@ export function ChangeRow(props: RowProps): React.ReactElement {
             </button>
             {props.expanded && openable && (
                 <div className="AuditHistory-values" id={valuesId}>
-                    <Values detail={detail} labelOf={props.labelOf} strings={strings} />
+                    <Values detail={detail} labelOf={props.labelOf} strings={strings} row={row} restore={props.restore ?? null} />
                 </div>
             )}
         </li>
     );
 }
 
-function Values(props: { detail: DetailState | undefined; labelOf: (column: string) => string; strings: Strings }): React.ReactElement {
-    const { detail, strings } = props;
+function Values(props: {
+    detail: DetailState | undefined;
+    labelOf: (column: string) => string;
+    strings: Strings;
+    row: AuditRow;
+    restore: RestoreProps | null;
+}): React.ReactElement {
+    const { detail, strings, row, restore } = props;
 
     if (!detail || detail.status === 'loading') {
         return (
@@ -609,26 +762,74 @@ function Values(props: { detail: DetailState | undefined; labelOf: (column: stri
         return <p className="AuditHistory-message">{strings.noDetail}</p>;
     }
 
+    /*
+     * The lines that can go back — none on a row that is not an Update,
+     * none of a value the platform cut, none the metadata refuses. A row
+     * with nothing to restore draws the three-column table it always did.
+     */
+    const lines = restore ? restorable(d.changes, row.action, restore.updatable) : [];
+    const offered = lines.length > 0;
+    const busy = restore?.state.status === 'busy';
+    // The columns this row is writing right now, so only their lines say so.
+    const busyColumns = restore?.state.status === 'busy' && restore.state.id === row.id ? restore.state.columns : [];
+    const failedHere = restore?.state.status === 'failed' && restore.state.id === row.id ? restore.state : null;
+
     return (
-        <table className="AuditHistory-table">
-            <thead>
-                <tr>
-                    <th scope="col">{strings.columnHeader}</th>
-                    <th scope="col">{strings.from}</th>
-                    <th scope="col">{strings.to}</th>
-                </tr>
-            </thead>
-            <tbody>
-                {d.changes.map((change) => (
-                    <ValueRow key={change.column} change={change} label={props.labelOf(change.column)} strings={strings} />
-                ))}
-            </tbody>
-        </table>
+        <>
+            {offered && lines.length > 1 && (
+                <div className="AuditHistory-restore-all">
+                    <Button appearance="secondary" size="small" disabled={busy} onClick={() => restore?.run(lines)}>
+                        {fill(strings.restoreAll, lines.length)}
+                    </Button>
+                </div>
+            )}
+            <table className="AuditHistory-table">
+                <thead>
+                    <tr>
+                        <th scope="col">{strings.columnHeader}</th>
+                        <th scope="col">{strings.from}</th>
+                        <th scope="col">{strings.to}</th>
+                        {offered && <th scope="col" className="AuditHistory-restore-head"><span className="AuditHistory-visually-hidden">{strings.restore}</span></th>}
+                    </tr>
+                </thead>
+                <tbody>
+                    {d.changes.map((change) => (
+                        <ValueRow
+                            key={change.column}
+                            change={change}
+                            label={props.labelOf(change.column)}
+                            strings={strings}
+                            restore={offered ? {
+                                offered: lines.includes(change),
+                                busy: busyColumns.includes(change.column),
+                                disabled: busy === true,
+                                run: () => restore?.run([change]),
+                            } : null}
+                        />
+                    ))}
+                </tbody>
+            </table>
+            {failedHere && (
+                <p className="AuditHistory-message AuditHistory-message--inline" role="alert">
+                    {failedHere.fault.privilege ? strings.noWritePrivilege : fill(strings.restoreFailed, failedHere.fault.message)}
+                </p>
+            )}
+        </>
     );
 }
 
-function ValueRow(props: { change: Change; label: string; strings: Strings }): React.ReactElement {
-    const { change, strings } = props;
+interface LineRestore {
+    /** This line can go back. A line that cannot keeps an empty cell, so the column stays aligned. */
+    offered: boolean;
+    /** This line's write is in flight. */
+    busy: boolean;
+    /** Another restore is in flight — single-flight. */
+    disabled: boolean;
+    run: () => void;
+}
+
+function ValueRow(props: { change: Change; label: string; strings: Strings; restore: LineRestore | null }): React.ReactElement {
+    const { change, strings, restore } = props;
     const cell = (text: string, absent: string): React.ReactElement =>
         text === '' ? <span className="AuditHistory-absent">{absent}</span> : <>{text}</>;
 
@@ -640,6 +841,27 @@ function ValueRow(props: { change: Change; label: string; strings: Strings }): R
             </th>
             <td className="AuditHistory-old">{cell(change.oldText, strings.empty)}</td>
             <td className="AuditHistory-new">{cell(change.newText, change.kind === 'cleared' ? strings.cleared : strings.empty)}</td>
+            {restore && (
+                <td className="AuditHistory-restore-cell">
+                    {restore.offered && (restore.busy ? (
+                        <span className="AuditHistory-message AuditHistory-message--busy AuditHistory-message--inline">
+                            <Spinner size="tiny" aria-hidden="true" />
+                            <span>{strings.restoring}</span>
+                        </span>
+                    ) : (
+                        <Button
+                            appearance="subtle"
+                            size="small"
+                            className="AuditHistory-restore"
+                            disabled={restore.disabled}
+                            aria-label={`${strings.restore}: ${props.label}`}
+                            onClick={restore.run}
+                        >
+                            {strings.restore}
+                        </Button>
+                    ))}
+                </td>
+            )}
         </tr>
     );
 }
