@@ -17,7 +17,9 @@ one to the columns that changed, old value beside new, as the platform
 formats them. A filter narrows the list to one column; bound to a column with
 *Only this column* on, it is that column's own history. Model-driven apps keep
 the same information behind **Related → Audit history**, a page away from the
-record; this puts it where the question is asked. Read-only in this version.
+record; this puts it where the question is asked. With **Show Restore** on, a
+value can be put back from the row — confirmed, written through the Web API,
+and listed as the newest change.
 
 Two decisions a reader will otherwise question. **The history is one request
 per page, through a function `context.webAPI` cannot call.** Dataverse's
@@ -32,7 +34,13 @@ missing privilege, or simply nothing recorded — four sentences, because a
 maker fixes them in four places.
 
 The bound column is a place on the form and, optionally, a scope. The control
-never reads its value and never writes it.
+never reads its value and never writes it. **A restore is a write around the
+form**: `webAPI.updateRecord` on the record with the detail's own raw value —
+a lookup as `<associatednavigationproperty>@odata.bind`, the navigation
+property read off the detail's annotation rather than a relationship
+lookup — behind `openConfirmDialog`, then page 1 again so the restore is the
+newest row. The form does not see the write until it is refreshed, and the
+control says so.
 
 ## Properties
 
@@ -40,6 +48,7 @@ never reads its value and never writes it.
 | --- | --- | --- | --- | --- |
 | `value` | any column (type group) | bound, **required** | — | The column the control sits on; read for its name only, never written. |
 | `columnScope` | TwoOptions | input | off | On: only changes to the bound column. |
+| `showRestore` | TwoOptions | input | off | On: a *Restore* per value of an Update, behind a confirmation. Not offered on a read-only form, without Write on the table, or on a line the platform cannot take back. |
 | `pageSize` | Whole.None | input | `20` | Changes per page and per *Load more*, 1–100; a page is one request. |
 | `recordId`, `recordEntity` | SingleLine.Text | input | — | The record, for a host that does not say — the platform FAQ's fallback. A form supplies it. |
 | `sampleData` | Multiple | input | — | A JSON history rendered instead of the record's — for the hub's demo. Blank on a real form. |
@@ -47,9 +56,9 @@ never reads its value and never writes it.
 A React (virtual) control on the platform's React 16.14 and Fluent UI 9.46;
 neither is bundled. Strings ship in English, German, French, Japanese and
 Spanish. Two features are declared, both optional, and both prompt the maker
-at install: `WebAPI` (whether the environment audits, and the fallback's
-rows) and `Utility` (display names, and the entity-set name the function
-needs). The history and the table's audit setting are read with a
+at install: `WebAPI` (whether the environment audits, the fallback's rows,
+and a restore's write) and `Utility` (display names, the entity-set name
+the function needs, and whether a column takes an update). The history and the table's audit setting are read with a
 same-origin `fetch` that no feature gates.
 
 ## On the hub

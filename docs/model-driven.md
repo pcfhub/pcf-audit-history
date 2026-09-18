@@ -60,9 +60,34 @@ true total.
 | Property | What it does |
 | --- | --- |
 | **Only this column** | On: only changes to the bound column. Off (the default): every audited change to the record. |
+| **Show Restore** | On: each value of an Update can be put back with a *Restore*, after a confirmation — see below. Off (the default): the history is read-only. |
 | **Page size** | Changes fetched per page and per *Load more*, 1–100, default 20. A page is one request. |
 | **Record id**, **Record table** | Not needed on a form — the control reads the record from the form itself. They exist for a host that does not say which record it is on: bind the first to the table's id column and type the table's logical name (`account`) in the second. |
 | **Sample data (demo only)** | A JSON history rendered instead of the record's. Leave blank on a real form. |
+
+## Restoring a value
+
+With **Show Restore** on, open an *Updated* row: every line whose earlier
+value can be put back has a *Restore* at its end, and a row with more than
+one gets a *Restore all* above the table. Pressing one opens the platform's
+confirmation naming the column and the value it goes back to; confirming
+writes it to the record at once, and the restore appears at the top of the
+list as an *Updated* change by you — the proof that it landed. A line whose
+earlier value was empty is restored by clearing the column.
+
+What the form does not do by itself is show the new value: the write went
+through the Web API, around the form, so the field on the form still shows
+what it showed. The notice above the list says so and offers **Refresh**,
+which reopens the record. Save any edits you want to keep before refreshing.
+
+*Restore* is not offered on a read-only form (an inactive record), to a
+user whose roles do not allow writing the table, on a row that is not an
+Update (a Create has nothing to go back to; Assign and Set State are
+operations, not values), or on a line the platform cannot take back: a
+value cut at 5 KB, a status or owner column, a composite address, a column
+the table's metadata marks as not updatable. A write the server refuses —
+a business rule, a plugin, a column that became read-only — shows the
+server's own sentence on the row.
 
 ## Unsaved records
 

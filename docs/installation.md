@@ -31,6 +31,9 @@ cannot be cleanly uninstalled.
   (`prvReadRecordAuditHistory`, `prvReadAuditSummary`). Both are on the
   standard roles that can read the table's records; a role stripped of them
   sees the sentence for it rather than an empty list.
+- To **restore**, users need **Write** on the table. The control asks the
+  platform and hides *Restore* for a user without it; a write the server
+  still refuses is shown as the server's own sentence.
 
 ## Permissions the maker is asked for
 
@@ -39,7 +42,7 @@ the control is added to a form:
 
 | Feature | What it is used for |
 | --- | --- |
-| `WebAPI` | Whether auditing is on for the environment, and the audit table's rows for a user who may read those but not the history |
+| `WebAPI` | Whether auditing is on for the environment, the audit table's rows for a user who may read those but not the history, and — with *Show Restore* on — the write that puts a value back |
 | `Utility` | Display names for the columns in the list |
 
 Both are declared **optional**. A host that provides neither still loads the

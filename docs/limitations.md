@@ -8,9 +8,19 @@ order: 7
 
 Each of these is a constraint that was chosen, not a defect waiting on a fix.
 
-- **It is read-only.** No *Restore*, no edit, no delete. The values are shown
-  as the platform recorded them; putting one back is a write with a
-  confirmation, and this release measures the read half first.
+- **A restore is a write around the form.** It goes through the Web API to
+  the record, so the form keeps showing the earlier value until it is
+  refreshed — the notice says so and offers a *Refresh*. An unsaved edit on
+  the form to the same column will overwrite the restore when the form
+  saves; save first. It is off unless the maker switches **Show Restore**
+  on.
+- **Not every value can go back.** A value the platform cut at 5 KB, a
+  status or owner column, a composite address and a column the metadata
+  marks as not updatable have no *Restore*; nor does any row that is not an
+  Update. The server's own refusals — a business rule, a plugin, a column
+  made read-only since — are shown on the row as the server phrased them.
+- **No edit, no delete.** The history is what the platform recorded; the
+  control puts values back, it does not change what was recorded.
 - **Model-driven only.** It needs the record's identity from the form and a
   same-origin call to the organisation's Web API for the history — a canvas
   app offers neither. There is no canvas page for that reason.

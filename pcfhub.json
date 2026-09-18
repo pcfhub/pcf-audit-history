@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "slug": "pcf-audit-history",
   "name": "Audit History",
-  "tagline": "A record's audit history on the form: who changed what, when, and the old value beside the new.",
+  "tagline": "A record's audit history on the form: who changed what, when, and the old value beside the new — and a Restore to put it back.",
   "category": "utilities",
   "tags": [
     "react",
@@ -11,8 +11,8 @@
     "change-tracking",
     "changelog",
     "dataverse",
+    "restore",
     "model-driven",
-    "read-only",
     "accessible"
   ],
   "control": {
@@ -48,6 +48,7 @@
     ],
     "limitations": [
       "The history comes from the preset's Sample data, not from Dataverse. On a form the control reads the history a page at a time through a same-origin call to the organisation's RetrieveRecordChangeHistory function — who, when and the old and new values in one answer — and there is no environment behind this origin to answer — so every preset carries a JSON history in the sampleData property and the control renders that. Opening a row, the column filter, Only this column and Load more all work against the same document.",
+      "A Restore on the demo writes into the preset's sample rather than to a record: the value goes back in the document and the restore appears as the newest row, by you — the same two things a form shows, without the confirmation dialog the platform would open first. On a form the write is webAPI.updateRecord on the record, behind openConfirmDialog, and the form is told it is behind until refreshed.",
       "The empty-state sentences for auditing switched off come from the preset's auditing flags. On a form they come from the organisation row and the table's definition.",
       "The values are the preset's own strings. On a form they are the platform's formatted values — a currency with its symbol, a choice as its label, a lookup as the related record's name — and the date is in the user's own time zone and locale.",
       "Everything that never leaves the browser is real: the rows, the values table with old beside new, a cleared column, the 5 KB note, a share and a relationship as their own kinds, the filter, the scope chip, paging, the narrow layout, dark, RTL, and the hidden and no-access states."
@@ -61,6 +62,22 @@
         "props": {
           "value": "Contoso Deutschland GmbH",
           "columnScope": false,
+          "showRestore": false,
+          "pageSize": 20,
+          "recordId": "",
+          "recordEntity": "",
+          "sampleData": "{\"table\":\"account\",\"column\":\"name\",\"auditing\":{\"org\":true,\"table\":true},\"labels\":{\"name\":\"Account Name\",\"parentaccountid\":\"Parent Account\",\"websiteurl\":\"Website\",\"industrycode\":\"Industry\",\"description\":\"Description\",\"statecode\":\"Status\",\"statuscode\":\"Status Reason\",\"ownerid\":\"Owner\",\"revenue\":\"Annual Revenue\",\"address1_city\":\"City\",\"telephone1\":\"Main Phone\",\"emailaddress1\":\"Email\",\"numberofemployees\":\"Number of Employees\",\"creditlimit\":\"Credit Limit\",\"address1_postalcode\":\"ZIP/Postal Code\",\"accountcategorycode\":\"Category\",\"fax\":\"Fax\"},\"changes\":[{\"id\":\"a1\",\"when\":\"2026-09-18T14:05:00Z\",\"whenText\":\"9/18/2026 2:05 PM\",\"who\":\"Alex Chen\",\"action\":2,\"changes\":[{\"column\":\"name\",\"old\":\"Contoso Deutschland\",\"new\":\"Contoso Deutschland GmbH\"}]},{\"id\":\"a2\",\"when\":\"2026-09-18T12:05:00Z\",\"whenText\":\"9/18/2026 12:05 PM\",\"who\":\"Priya Raman\",\"action\":2,\"changes\":[{\"column\":\"parentaccountid\",\"old\":null,\"new\":\"Contoso Europe\"}]},{\"id\":\"a3\",\"when\":\"2026-09-18T09:05:00Z\",\"whenText\":\"9/18/2026 9:05 AM\",\"who\":\"Alex Chen\",\"action\":2,\"changes\":[{\"column\":\"websiteurl\",\"old\":\"https://www.contoso.de\",\"new\":null}]},{\"id\":\"a4\",\"when\":\"2026-09-18T05:05:00Z\",\"whenText\":\"9/18/2026 5:05 AM\",\"who\":\"Alex Chen\",\"action\":2,\"changes\":[{\"column\":\"industrycode\",\"old\":\"Accounting\",\"new\":\"Business Services\"}]},{\"id\":\"a5\",\"when\":\"2026-09-17T12:05:00Z\",\"whenText\":\"9/17/2026 12:05 PM\",\"who\":\"Priya Raman\",\"action\":2,\"changes\":[{\"column\":\"description\",\"old\":\"German subsidiary.\",\"new\":\"The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The …\"}]},{\"id\":\"a6\",\"when\":\"2026-09-17T08:05:00Z\",\"whenText\":\"9/17/2026 8:05 AM\",\"who\":\"SYSTEM\",\"action\":41,\"changes\":[{\"column\":\"statecode\",\"old\":\"Active\",\"new\":\"Inactive\"},{\"column\":\"statuscode\",\"old\":\"Active\",\"new\":\"Inactive\"}]},{\"id\":\"a7\",\"when\":\"2026-09-16T12:05:00Z\",\"whenText\":\"9/16/2026 12:05 PM\",\"who\":\"Alex Chen\",\"action\":13,\"changes\":[{\"column\":\"ownerid\",\"old\":\"Alex Chen\",\"new\":\"Sales EMEA\"}]},{\"id\":\"a8\",\"when\":\"2026-09-16T10:05:00Z\",\"whenText\":\"9/16/2026 10:05 AM\",\"who\":\"Priya Raman\",\"action\":14,\"share\":{\"principal\":\"Alex Chen\",\"old\":\"None\",\"new\":\"ReadAccess, WriteAccess\"}},{\"id\":\"a9\",\"when\":\"2026-09-15T11:05:00Z\",\"whenText\":\"9/15/2026 11:05 AM\",\"who\":\"Alex Chen\",\"action\":33,\"relationship\":{\"name\":\"accountleads_association\",\"targets\":[\"Nina Vogel\"]}},{\"id\":\"a10\",\"when\":\"2026-09-15T06:05:00Z\",\"whenText\":\"9/15/2026 6:05 AM\",\"who\":\"Alex Chen\",\"action\":2,\"changes\":[{\"column\":\"revenue\",\"old\":\"$100,000,000.00\",\"new\":\"$120,000,000.00\"}]},{\"id\":\"a11\",\"when\":\"2026-09-14T10:05:00Z\",\"whenText\":\"9/14/2026 10:05 AM\",\"who\":\"Priya Raman\",\"action\":2,\"changes\":[{\"column\":\"address1_city\",\"old\":\"Bonn\",\"new\":\"Frankfurt\"}]},{\"id\":\"a12\",\"when\":\"2026-09-13T14:05:00Z\",\"whenText\":\"9/13/2026 2:05 PM\",\"who\":\"Alex Chen\",\"action\":2,\"changes\":[{\"column\":\"telephone1\",\"old\":\"+49 69 1234\",\"new\":\"+49 69 5678\"}]},{\"id\":\"a13\",\"when\":\"2026-09-01T22:05:00Z\",\"whenText\":\"9/1/2026 10:05 PM\",\"who\":\"Priya Raman\",\"action\":2,\"changes\":[{\"column\":\"address1_city\",\"old\":\"Berlin\",\"new\":\"Bonn\"},{\"column\":\"address1_postalcode\",\"old\":\"10115\",\"new\":\"60306\"}]},{\"id\":\"a14\",\"when\":\"2026-08-29T14:05:00Z\",\"whenText\":\"8/29/2026 2:05 PM\",\"who\":\"Alex Chen\",\"action\":1,\"changes\":[{\"column\":\"name\",\"new\":\"Contoso DE\"},{\"column\":\"address1_city\",\"new\":\"Berlin\"},{\"column\":\"revenue\",\"new\":\"$100,000,000.00\"},{\"column\":\"statecode\",\"new\":\"Active\"}]}]}"
+        }
+      },
+      {
+        "slug": "restore",
+        "name": "With Restore on",
+        "description": "The same history with Show Restore on: open an Updated row and every value that can go back has a Restore; the row with two has a Restore all. A restore lands at the top as a change by you.",
+        "isDefault": false,
+        "props": {
+          "value": "Contoso Deutschland GmbH",
+          "columnScope": false,
+          "showRestore": true,
           "pageSize": 20,
           "recordId": "",
           "recordEntity": "",
@@ -74,6 +91,7 @@
         "props": {
           "value": "Contoso Deutschland GmbH",
           "columnScope": false,
+          "showRestore": false,
           "pageSize": 15,
           "recordId": "",
           "recordEntity": "",
@@ -87,6 +105,7 @@
         "props": {
           "value": "$80,000.00",
           "columnScope": true,
+          "showRestore": false,
           "pageSize": 20,
           "recordId": "",
           "recordEntity": "",
@@ -100,6 +119,7 @@
         "props": {
           "value": "Contoso Deutschland GmbH",
           "columnScope": false,
+          "showRestore": false,
           "pageSize": 20,
           "recordId": "",
           "recordEntity": "",
@@ -113,6 +133,7 @@
         "props": {
           "value": "Contoso Deutschland GmbH",
           "columnScope": false,
+          "showRestore": false,
           "pageSize": 20,
           "recordId": "",
           "recordEntity": "",
@@ -126,6 +147,7 @@
         "props": {
           "value": "Contoso Deutschland GmbH",
           "columnScope": false,
+          "showRestore": false,
           "pageSize": 20,
           "recordId": "",
           "recordEntity": "",
@@ -139,6 +161,7 @@
         "props": {
           "value": "Contoso Deutschland GmbH",
           "columnScope": false,
+          "showRestore": false,
           "pageSize": 20,
           "recordId": "",
           "recordEntity": "",

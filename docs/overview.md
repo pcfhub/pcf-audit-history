@@ -40,9 +40,16 @@ control puts it where the question is asked.
 - **It pages, and it counts.** A page at a time, sized by you, *Showing 20
   of 143* at the top and *Load more* at the bottom. *Only this column* is
   the server's own answer for that column, complete and counted.
-- **It never writes.** The control is bound to a column only to have a place
-  on the form and, optionally, a column to scope to. It reads nothing from
-  that column and leaves it exactly as it found it.
+- **It can put a value back — when you say so.** With **Show Restore** on,
+  every value of an Update that can go back gets a *Restore*, and the row a
+  *Restore all*. Each asks first, writes the old value through the Web API,
+  and shows up in the list as the newest change, because the platform audits
+  a restore like anything else. Off by default: a write is a decision the
+  maker makes, not one the control makes for them.
+- **It never touches the column it sits on.** The binding is a place on the
+  form and, optionally, a column to scope to. It reads nothing from that
+  column and leaves it exactly as it found it — a restore writes the record
+  through the Web API, never through the binding.
 
 ## What it works with
 
@@ -55,5 +62,7 @@ control puts it where the question is asked.
 
 ## What it does not do
 
-It is read-only in this version: there is no *Restore* of an old value. See
-[Limitations](limitations.md) for what else was decided against.
+It does not edit or delete history, and it does not restore what the
+platform cannot: a value cut at 5 KB, a status change, an owner, a value
+the form no longer allows. See [Limitations](limitations.md) for what else
+was decided against, and why.

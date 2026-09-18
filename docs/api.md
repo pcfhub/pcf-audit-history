@@ -27,10 +27,18 @@ order: 5
 ## Notes
 
 The control declares no outputs: it reads the bound column's name and never
-its value, and writes nothing.
+its value, and never writes it. The one write it makes — a restore, with
+**Show Restore** on — goes to the record through the Web API, not through
+the binding.
 
-**Page size** is clamped to 1–100; blank is 20. It is the `maxPageSize` of
-every audit-table query and the number of value requests a page costs.
+**Show Restore** is off by default, and a TwoOptions input cannot default to
+on. On, it offers a *Restore* per value of an Update whose earlier value the
+platform can take back, behind the platform's confirmation. It is withheld
+on a read-only form, for a user without Write on the table, and on any host
+without a Web API that writes or a confirm dialog.
+
+**Page size** is clamped to 1–100; blank is 20. It is the number of changes
+one request answers.
 
 **Record id** and **Record table** are read only when the form does not say
 which record the control is on. The id must be a GUID and the table a logical
