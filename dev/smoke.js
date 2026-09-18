@@ -732,6 +732,10 @@ check('a capped value carries the note', rowHtml({ status: 'loaded', detail: Df.
 check('a share renders its facts, not an empty table', (() => { const m = rowHtml({ status: 'loaded', detail: Df.diffDetail(detailOf(8)) }, true); return m.includes('AuditHistory-facts') && !m.includes('AuditHistory-table'); })());
 check('values still loading show the spinner; failed ones the sentence; a privilege failure the other sentence', rowHtml({ status: 'loading' }, true).includes('resx:AuditHistory_Loading') && rowHtml({ status: 'failed', message: 'x', privilege: false }, true).includes('resx:AuditHistory_DetailFailed') && rowHtml({ status: 'failed', message: 'x', privilege: true }, true).includes('resx:AuditHistory_NoPrivilege'));
 check('a row with no user names one', rowHtml({ status: 'loaded', detail: Df.diffDetail(detailOf(4)) }, false).includes('Alex Chen') && renderDeep(React.createElement(Cm.ChangeRow, { row: { ...Rw.toRow(audits[3]), who: '' }, detail: undefined, expanded: false, labelOf: (c) => c, strings: rowStrings, getString: marked, onToggle: () => undefined })).includes('resx:AuditHistory_UnknownUser'));
+check('a row with no values to show does not open — no aria-expanded, the button inert, the summary sentence alone', (() => {
+    const m = rowHtml({ status: 'loaded', detail: Df.diffDetail({ '@odata.type': '#Microsoft.Dynamics.CRM.AttributeAuditDetail', OldValue: {}, NewValue: {} }) }, true);
+    return !m.includes('aria-expanded') && m.includes('disabled') && m.includes('AuditHistory-row--flat') && !m.includes('AuditHistory-values') && m.includes('resx:AuditHistory_NoDetail');
+})());
 check('fill replaces both placeholders', Cm.fill('{0} of {1}', 3, 26) === '3 of 26' && Cm.fill('Only {0}', 'x') === 'Only x');
 
 /* ------------------------------------------------------------- teardown */

@@ -109,14 +109,38 @@ real there; the two switches' sentences come from the preset's `auditing`.
   of a set — present on the old side only — with `null` and
   `DeletedAttributes` accepted too.
 - **The 5 KB cap** (P12): Learn's number and its trailing ellipsis.
-- **A Create, an Assign, a Share, an Associate** (P6): the four detail kinds
-  beyond an Update rest on Learn's samples and the rig's fixture.
+- **An Assign, a Share, an Associate** (P6): three of the detail kinds
+  beyond an Update rest on Learn's samples and the rig's fixture. A Create
+  was measured on the walkthrough (W8).
+- **The *save the record first* state on the form** — reached in the rig
+  only; the new account was saved before the tab was opened.
+- **Why the attribute function counts one more than it lists** (W7).
 - A history longer than one page of the *attribute* function, and a
   `PagingCookie` older than the page it came from.
 - Audit history on the phone client — Learn says it is not available there.
 - Canvas apps: no `context.webAPI`, no `contextInfo`, no same-origin fetch of
   an organisation URL. There is no canvas page for that reason.
 - An on-premises organisation URL with the organisation in the path.
+
+## Walkthrough — 0.1.0 on the form, 2026-09-18
+
+The Accounts form on `cll365`, the control on an *Audit History* tab bound to
+*Address 2: Street 1*, then rebound to *Address 1: Street 2* for W7; a new
+account *test audit* for W8; the phone layout for W9. All ten the right way;
+two things came from looking rather than asking.
+
+| # | On the form | Expected | Answer |
+| --- | --- | --- | --- |
+| W1 | Open *City Power & Light* | Rows newest first, sixteen, the count | Sixteen rows, *Showing 16 of 16*, every column by its display name, *4 columns* where more than three changed, the April *Audit Enabled* event last with *No values are recorded for this change*. |
+| W2 | Open the Credit Limit row | 30 → 40, one line | *Credit Limit* 30 → 40, one line — the `_base` shadow folded. |
+| W3 | Open the address-lines row | Street 3 set, Street 2 changed, the composite | *Address 1* (the composite), *Address 1: Street 2* street → street 2, *Address 1: Street 3* *(empty)* → street 3. |
+| W4 | The Column dropdown | Every column seen, display names | Twelve columns, display names, sorted. |
+| W5 | The *Audit Enabled* row | The platform's label, no values | As expected — and **opening it repeated the sentence** it already showed. A row with nothing to open does not open now: the button is inert, no chevron, no `aria-expanded`. |
+| W6 | Page size 5 | Five rows, *Showing 5 of 16*, *Load more* | *Showing 5 of 16* and *Load more*. |
+| W7 | *Only this column* on *Address 1: Street 2* | The chip, that column's rows, a true total | The chip *Only Address 1: Street 2* and three rows — and **`Showing 3 of 4`** with nothing more to load: the attribute function's `TotalRecordCount` was one more than the details it returned, the column's audit-configuration event counted and not listed (or listed without an id). A complete list counts its rows now — *3 changes* — and `TotalRecordCount` is shown only while there is more to load. Why the function counts one more is *Not verified*. |
+| W8 | A new account | *Save the record first*, then the Create | Saved before the tab was opened, so the *save first* state was not seen. **The Create was**: 31 columns, every one *(empty)* → the value, the platform's formatted values throughout (*Owner* as a name, *Currency* "US Dollar", every choice "Default Value", *Process* as a zero GUID). |
+| W9 | The phone layout | Stacked rows, nothing clipped | Date, user and change on three lines; the values table with its header dropped and three columns fitting; the count on its own line. |
+| W10 | Anything wrong | — | Nothing beyond W5 and W7. |
 
 ## Screenshots
 

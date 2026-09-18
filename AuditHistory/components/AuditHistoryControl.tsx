@@ -360,7 +360,15 @@ export function AuditHistoryControl(props: IProps): React.ReactElement | null {
                     </div>
                 );
             } else {
-                const count = state.total !== null
+                /*
+                 * The server's total, while there is more to load; the rows
+                 * themselves once there is not. On the form (W7) the attribute
+                 * function counted one more than it listed — the column's
+                 * audit-configuration event, counted and not returned — and
+                 * "Showing 3 of 4" with nothing more to load is a sentence
+                 * that contradicts itself.
+                 */
+                const count = state.total !== null && state.cursor !== null
                     ? fill(strings.showing, rows.length, state.total)
                     : fill(strings.showingCount, rows.length);
 
@@ -514,22 +522,35 @@ function summary(detail: DetailState | undefined, labelOf: (column: string) => s
  * One change: a button row — when, who, what, and a summary of the columns
  * — and, open, the values: one line per column, old beside new.
  */
+/** A row whose values are known to be nothing — an audit-configuration event — has nothing to open. */
+function hasValues(detail: DetailState | undefined): boolean {
+    if (!detail || detail.status !== 'loaded') {
+        return true;
+    }
+
+    const d = detail.detail;
+
+    return d.kind !== 'other' && !(d.kind === 'attributes' && d.changes.length === 0);
+}
+
 export function ChangeRow(props: RowProps): React.ReactElement {
     const { row, detail, strings } = props;
     const valuesId = `AuditHistory-values-${row.id}`;
     const action = actionLabel(row.action, row.actionText, props.getString);
+    const openable = hasValues(detail);
 
     return (
-        <li className={`AuditHistory-row${props.expanded ? ' AuditHistory-row--open' : ''}`}>
+        <li className={`AuditHistory-row${props.expanded && openable ? ' AuditHistory-row--open' : ''}${openable ? '' : ' AuditHistory-row--flat'}`}>
             <button
                 type="button"
                 className="AuditHistory-summary"
-                aria-expanded={props.expanded}
-                aria-controls={valuesId}
-                aria-label={props.expanded ? strings.collapse : strings.expand}
-                onClick={props.onToggle}
+                aria-expanded={openable ? props.expanded : undefined}
+                aria-controls={openable ? valuesId : undefined}
+                aria-label={openable ? (props.expanded ? strings.collapse : strings.expand) : undefined}
+                disabled={!openable}
+                onClick={openable ? props.onToggle : undefined}
             >
-                <Chevron />
+                {openable ? <Chevron /> : <span className="AuditHistory-chevron AuditHistory-chevron--none" aria-hidden="true" />}
                 <span className="AuditHistory-when">
                     <time dateTime={row.when || undefined}>{row.whenText || row.when}</time>
                 </span>
@@ -539,7 +560,7 @@ export function ChangeRow(props: RowProps): React.ReactElement {
                     <span className="AuditHistory-columns">{summary(detail, props.labelOf, strings)}</span>
                 </span>
             </button>
-            {props.expanded && (
+            {props.expanded && openable && (
                 <div className="AuditHistory-values" id={valuesId}>
                     <Values detail={detail} labelOf={props.labelOf} strings={strings} />
                 </div>

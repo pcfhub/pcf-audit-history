@@ -206,6 +206,21 @@
     transition: transform var(--AuditHistory-duration-faster) var(--AuditHistory-curve-ease);
 }
 
+/* A row with nothing to open: the chevron's space is kept so the columns line up, the button is inert. */
+.AuditHistory .AuditHistory-row--flat .AuditHistory-summary {
+    cursor: default;
+}
+
+.AuditHistory .AuditHistory-row--flat .AuditHistory-summary:hover {
+    background: transparent;
+}
+
+.AuditHistory .AuditHistory-chevron--none {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+}
+
 .AuditHistory .AuditHistory-row--open .AuditHistory-chevron {
     transform: rotate(90deg);
 }
