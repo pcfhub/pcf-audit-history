@@ -49,16 +49,18 @@ changes; pick one and the list narrows to changes that touched it. With
 **Only this column** on, the dropdown is replaced by a chip naming the bound
 column and the list is that column's history from the start.
 
-A narrowed list that finds nothing on the loaded pages reads the next page on
-its own, up to five, before saying *No changes have been recorded for …*.
-The count at the top is what is shown of what has been loaded.
+With the dropdown, a narrowed list that finds nothing on the loaded pages
+reads the next page on its own, up to five, before saying *No changes have
+been recorded for …*. With **Only this column**, the server does the
+narrowing — the whole history of that column, paged — and the count is its
+true total.
 
 ## Properties
 
 | Property | What it does |
 | --- | --- |
 | **Only this column** | On: only changes to the bound column. Off (the default): every audited change to the record. |
-| **Page size** | Changes fetched per page and per *Load more*, 1–100, default 20. Each change costs one request for its values, so this is a request count as much as a row count. |
+| **Page size** | Changes fetched per page and per *Load more*, 1–100, default 20. A page is one request. |
 | **Record id**, **Record table** | Not needed on a form — the control reads the record from the form itself. They exist for a host that does not say which record it is on: bind the first to the table's id column and type the table's logical name (`account`) in the second. |
 | **Sample data (demo only)** | A JSON history rendered instead of the record's. Leave blank on a real form. |
 

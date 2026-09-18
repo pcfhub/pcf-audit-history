@@ -460,6 +460,7 @@ check('a Relationship is its own kind, with the name and the targets', rel.kind 
 check('an unknown detail type is named, not rendered as an empty change', Df.diffDetail({ '@odata.type': '#Microsoft.Dynamics.CRM.UserAccessAuditDetail', AccessTime: 'x' }).kind === 'other');
 check('the same text on both sides is not a change', Df.diffAttributes({ name: 'A' }, { name: 'A' }, []).length === 0);
 check('annotation keys never become columns', Df.diffAttributes({}, { '_ownerid_value@Microsoft.Dynamics.CRM.lookuplogicalname': 'team', _ownerid_value: 'x' }, []).map((c) => c.column).join() === 'ownerid');
+check('a money column\'s _base shadow is folded into it', Df.diffAttributes({ creditlimit: 30, creditlimit_base: 30 }, { creditlimit: 40, creditlimit_base: 40 }, []).map((c) => c.column).join() === 'creditlimit' && Df.diffAttributes({}, { revenue_base: 1 }, []).map((c) => c.column).join() === 'revenue_base');
 check('columnsOf reads an attributes detail and nothing else', Df.columnsOf(two).join() === 'statecode,statuscode' && Df.columnsOf(share).length === 0);
 
 /* ------------------------------------------------------------ the queries */
@@ -470,10 +471,11 @@ check(
     Qy.auditsQuery(G1) === `?$select=auditid,createdon,action,operation,_userid_value&$filter=_objectid_value eq ${G1}&$orderby=createdon desc`,
     Qy.auditsQuery(G1),
 );
-check('a keyset window narrows on createdon', Qy.auditsQuery(G1, '2026-09-01T00:00:00Z').includes(' and createdon lt 2026-09-01T00:00:00Z&'));
 check('the bound function hangs off the audit row', Qy.detailsPath('a1') === 'audits(a1)/Microsoft.Dynamics.CRM.RetrieveAuditDetails');
-check('the unbound function carries its arguments as encoded @-aliases', decodeURIComponent(Qy.changeHistoryPath('accounts', G1, 2, 10)) === `RetrieveRecordChangeHistory(Target=@t,PagingInfo=@p)?@t={'@odata.id':'accounts(${G1})'}&@p={"PageNumber":2,"Count":10,"ReturnTotalRecordCount":true}`);
-check('the table definition path selects IsAuditEnabled', Qy.tableDefinitionPath('account') === "EntityDefinitions(LogicalName='account')?$select=IsAuditEnabled");
+check('the unbound function carries its arguments as encoded @-aliases', decodeURIComponent(Qy.changeHistoryPath('accounts', G1, { pageNumber: 2, count: 10 })) === `RetrieveRecordChangeHistory(Target=@t,PagingInfo=@p)?@t={'@odata.id':'accounts(${G1})'}&@p={"PageNumber":2,"Count":10,"ReturnTotalRecordCount":true}`);
+check('a cookie rides in PagingInfo when the previous page gave one', decodeURIComponent(Qy.changeHistoryPath('accounts', G1, { pageNumber: 2, count: 10, cookie: '<c/>' })).includes('"PagingCookie":"<c/>"'));
+check('the attribute function names the column as a quoted alias', decodeURIComponent(Qy.attributeHistoryPath('accounts', G1, 'name', { pageNumber: 1, count: 5 })).includes("AttributeLogicalName=@a,PagingInfo=@p)?@t={'@odata.id':'accounts(") && decodeURIComponent(Qy.attributeHistoryPath('accounts', G1, 'name', { pageNumber: 1, count: 5 })).includes("&@a='name'&@p="));
+check('the table definition path selects IsAuditEnabled and the entity set', Qy.tableDefinitionPath('account') === "EntityDefinitions(LogicalName='account')?$select=IsAuditEnabled,EntitySetName");
 
 /* ------------------------------------------------------------ the reducer */
 
@@ -482,6 +484,10 @@ let s = St.reduce(St.initialState, { type: 'pageRequested' });
 check('the first request is "first" and marks the list started', s.loading === 'first' && s.started === true && St.initialState.started === false);
 s = St.reduce(s, { type: 'pageLoaded', page: { rows, next: { kind: 'nextLink', url: 'u' }, total: null }, auto: false });
 check('a page appends its rows and keeps the cursor', s.rows.length === 3 && s.cursor.url === 'u' && s.loading === null);
+check('a page that carries its values marks them loaded, and the rest stay pending', (() => {
+    const withValues = St.reduce(St.initialState, { type: 'pageLoaded', page: { rows, details: { [rows[0].id]: Df.diffDetail(detailOf(1)) }, next: null, total: 3 }, auto: false });
+    return withValues.details[rows[0].id].status === 'loaded' && St.pendingDetails(withValues).length === 2;
+})());
 s = St.reduce(St.reduce(s, { type: 'pageRequested' }), { type: 'pageLoaded', page: { rows: [rows[2], Rw.toRow(audits[3])], next: null, total: 26 }, auto: true });
 check('a second page dedupes by id, counts an automatic page, and takes the total', s.rows.length === 4 && s.autoPages === 1 && s.total === 26 && s.cursor === null);
 check('the later request was "more"', St.reduce(s, { type: 'pageRequested' }).loading === 'more');
@@ -603,47 +609,70 @@ async function sources() {
     const labels = await P.readHost(ctx).columnLabels('account', ['name', 'parentaccountid', 'nosuchcolumn']);
     check('columnLabels reads DisplayName by name off the item collection and leaves an unknown column out', labels.name === 'Account Name' && labels.parentaccountid === 'Parent Account' && labels.nosuchcolumn === undefined, JSON.stringify(labels));
 
-    const live = Ds.createAuditsSource({ webAPI: ctx.webAPI, clientUrl: url, recordId: 'c1', table: 'account', pageSize: 10 });
+    const options = { webAPI: ctx.webAPI, clientUrl: url, entitySet: 'accounts', recordId: 'c1', table: 'account', pageSize: 10, column: null };
+    const live = Ds.createLiveSource(options);
     const page1 = await live.loadPage(null);
-    check('the live source pages the audit table newest first, ten at a time, with a nextLink cursor', page1.rows.length === 10 && page1.rows[0].id === audits[0].auditid && page1.next && page1.next.kind === 'nextLink', JSON.stringify(page1.next));
+    check(
+        'the live source is the record-history function: one call, ten rows with their values, the total, a page cursor',
+        live.route === 'history' && page1.rows.length === 10 && page1.rows[0].id === audits[0].auditid && page1.rows[0].who === 'Alex Chen'
+            && Object.keys(page1.details).length === 10 && page1.details[audits[1].auditid].changes[0].column === 'parentaccountid'
+            && page1.total === 26 && page1.next && page1.next.kind === 'page' && page1.next.pageNumber === 2 && typeof page1.next.cookie === 'string',
+        JSON.stringify([live.route, page1.rows.length, page1.total, page1.next]),
+    );
     const page2 = await live.loadPage(page1.next);
     const page3 = await live.loadPage(page2.next);
-    check('… and hands the link back as options for the next page, to the end', page2.rows.length === 10 && page2.rows[0].id === audits[10].auditid && page3.rows.length === 6 && page3.next === null);
+    check('… and pages by number and cookie to the end', page2.rows[0].id === audits[10].auditid && page3.rows.length === 6 && page3.next === null && page3.total === 26);
+    const scoped = Ds.createLiveSource({ ...options, column: 'name' });
+    const scopedPage = await scoped.loadPage(null);
+    check('Only this column asks the attribute-history function: three name changes, server-side', scopedPage.rows.length === 3 && scopedPage.total === 3 && Object.values(scopedPage.details).every((d) => d.changes.some((c) => c.column === 'name')), JSON.stringify(scopedPage.rows.map((r) => r.id)));
     const detail = await live.loadDetail(audits[1].auditid);
-    check('the live source reads a row\'s values through the bound function', detail.kind === 'attributes' && detail.changes[0].column === 'parentaccountid');
+    check('a row without values can still be asked for through the bound function', detail.kind === 'attributes' && detail.changes[0].column === 'parentaccountid');
     let fault = null;
     await live.loadDetail('00000000-0000-0000-0000-0000000000ff').catch((e) => { fault = e; });
     check('a missing row is a fault with the server\'s sentence, not a privilege one', fault && fault.privilege === false && /Does Not Exist/.test(fault.message), JSON.stringify(fault));
     check('probeEnabled asks both switches', JSON.stringify(await live.probeEnabled()) === '{"org":true,"table":true}');
+    check('readHistoryPage reads an empty collection as an empty page', (() => { const p = Ds.readHistoryPage({ AuditDetailCollection: { MoreRecords: false, TotalRecordCount: 0, AuditDetails: [] } }, 1); return p.rows.length === 0 && p.next === null && p.total === 0; })());
 
-    const noUrl = Ds.createAuditsSource({ webAPI: ctx.webAPI, clientUrl: null, recordId: 'c1', table: 'account', pageSize: 10 });
+    const noUrl = Ds.createLiveSource({ ...options, clientUrl: null, entitySet: null });
+    const noUrlPage = await noUrl.loadPage(null);
     fault = null;
     await noUrl.loadDetail(audits[1].auditid).catch((e) => { fault = e; });
-    check('without an organisation URL the rows still load and the values are a named fault', (await noUrl.loadPage(null)).rows.length === 10 && fault && fault.privilege === false);
+    check('without an organisation URL the table route answers: every row read once, sliced, the values a named fault', noUrl.route === 'audits' && noUrlPage.rows.length === 10 && noUrlPage.total === 26 && noUrlPage.next.kind === 'offset' && (await noUrl.loadPage(noUrlPage.next)).rows[0].id === audits[10].auditid && fault && fault.privilege === false);
     check('… and the table switch is unknown rather than off', (await noUrl.probeEnabled()).table === null);
+    check('without an entity set the functions cannot be addressed, so the table answers', Ds.createLiveSource({ ...options, entitySet: null }).route === 'audits');
+    check('with neither route there is no source', Ds.createLiveSource({ ...options, webAPI: null, clientUrl: null, entitySet: null }) === null);
 
     const refusedUrl = host.nextClientUrl();
-    const refusedCtx = ctxWith({ clientUrl: refusedUrl, auditStatus: 403, auditSummary: false });
-    const refused = Ds.createAuditsSource({ webAPI: refusedCtx.webAPI, clientUrl: refusedUrl, recordId: 'c1', table: 'account', pageSize: 10 });
-    fault = null;
-    await refused.loadPage(null).catch((e) => { fault = e; });
-    check('a user without prvReadAuditSummary: the page is a privilege fault', fault && fault.privilege === true, JSON.stringify(fault));
+    const refusedCtx = ctxWith({ clientUrl: refusedUrl, auditStatus: 403 });
+    const refused = Ds.createLiveSource({ ...options, webAPI: refusedCtx.webAPI, clientUrl: refusedUrl });
+    const fallback = await refused.loadPage(null);
     fault = null;
     await refused.loadDetail(audits[1].auditid).catch((e) => { fault = e; });
-    check('a user without prvReadRecordAuditHistory: the values are a privilege fault, from the 403', fault && fault.privilege === true, JSON.stringify(fault));
+    check(
+        'a user without prvReadRecordAuditHistory: the function is refused, the table answers the rows, and the values are refused without asking',
+        refused.route === 'audits' && fallback.rows.length === 10 && fallback.details === undefined && fault && fault.privilege === true,
+        JSON.stringify([refused.route, fallback.rows.length, fault]),
+    );
+    const bothUrl = host.nextClientUrl();
+    const bothCtx = ctxWith({ clientUrl: bothUrl, auditStatus: 403, auditSummary: false });
+    const both = Ds.createLiveSource({ ...options, webAPI: bothCtx.webAPI, clientUrl: bothUrl });
+    fault = null;
+    await both.loadPage(null).catch((e) => { fault = e; });
+    check('a user without either privilege: the page is a privilege fault', fault && fault.privilege === true, JSON.stringify(fault));
 
     const darkUrl = host.nextClientUrl();
     const darkCtx = ctxWith({ clientUrl: darkUrl, auditStatus: 0 });
-    const dark = Ds.createAuditsSource({ webAPI: darkCtx.webAPI, clientUrl: darkUrl, recordId: 'c1', table: 'account', pageSize: 10 });
+    const dark = Ds.createLiveSource({ ...options, webAPI: darkCtx.webAPI, clientUrl: darkUrl });
     fault = null;
-    await dark.loadDetail(audits[1].auditid).catch((e) => { fault = e; });
-    check('offline: the values are a plain fault, not a privilege one', fault && fault.privilege === false && typeof fault.message === 'string');
+    await dark.loadPage(null).catch((e) => { fault = e; });
+    check('offline: the page is a plain fault, not a privilege one, and the table is not tried', fault && fault.privilege === false && dark.route === 'history', JSON.stringify(fault));
 
     const sampled = Ds.createSampleSource(sample, 2);
     const s1 = await sampled.loadPage(null);
     const s2 = await sampled.loadPage(s1.next);
-    check('the sample source pages the sample and knows its total', s1.rows.length === 2 && s1.total === 3 && s2.rows.length === 1 && s2.next === null);
+    check('the sample source pages the sample, knows its total, and carries the values', s1.rows.length === 2 && s1.total === 3 && Object.keys(s1.details).length === 2 && s2.rows.length === 1 && s2.next === null);
     check('… and answers values and the switches from the document', (await sampled.loadDetail('s1')).kind === 'attributes' && (await sampled.probeEnabled()).table === false);
+    check('the sample source scopes to a column the way the attribute function would', (await Ds.createSampleSource(sample, 10, 'name').loadPage(null)).rows.length === 2);
 
     check('isPrivilegeFault reads the code or the message', Ds.isPrivilegeFault({ errorCode: 2147746336, message: 'x' }) && Ds.isPrivilegeFault({ message: 'Principal user is missing prvReadAuditSummary privilege.' }) && !Ds.isPrivilegeFault({ message: 'Record Is Unavailable.' }));
 }
@@ -661,7 +690,7 @@ check('the key carries the scope and the page size, so a preset switch restarts 
 check('the same key resolves to the same source', bound.update({}).props.resolve === bound.update({}).props.resolve && bound.update({}).props.resolve !== bound.update({ inputs: { pageSize: 3 } }).props.resolve);
 check('the identity inputs stand in for contextInfo', mount({ inputs: { recordId: G1, recordEntity: 'account' } }).props().mode === 'live');
 check('an unsaved record — no identity anywhere — is save-first', mount({}).props().mode === 'save-first' && mount({ inputs: { recordId: 'nope', recordEntity: 'account' } }).props().mode === 'save-first');
-check('no Web API is not-available, before save-first', mount({ webAPI: false }).props().mode === 'not-available' && mount({ webAPI: false, contextInfo: RECORD }).props().mode === 'not-available');
+check('no Web API and no organisation URL is not-available, before save-first; either alone is a route', mount({ webAPI: false, page: false }).props().mode === 'not-available' && mount({ webAPI: false, page: false, contextInfo: RECORD }).props().mode === 'not-available' && mount({ webAPI: false, contextInfo: RECORD }).props().mode === 'live' && mount({ page: false, contextInfo: RECORD }).props().mode === 'live');
 check('a column the user cannot read is no-access, before anything else', mount({ contextInfo: RECORD, security: 'no-access' }).props().mode === 'no-access');
 const sampleJson = JSON.stringify(sampleDoc);
 const sampledMount = mount({ webAPI: false, inputs: { sampleData: sampleJson } });
@@ -682,7 +711,7 @@ check('the control writes nothing', JSON.stringify(bound.outputs()) === '{}');
 /* -------------------------------------------- the bundle: the markup */
 
 const html = (options) => renderDeep(mount(options).element) || '';
-check('each mode renders its sentence from the .resx', html({ webAPI: false }).includes('resx:AuditHistory_NotAvailable') && html({}).includes('resx:AuditHistory_SaveFirst') && html({ contextInfo: RECORD, security: 'no-access' }).includes('resx:AuditHistory_NoAccess') && html({ inputs: { sampleData: '{' } }).includes('role="alert"'));
+check('each mode renders its sentence from the .resx', html({ webAPI: false, page: false }).includes('resx:AuditHistory_NotAvailable') && html({}).includes('resx:AuditHistory_SaveFirst') && html({ contextInfo: RECORD, security: 'no-access' }).includes('resx:AuditHistory_NoAccess') && html({ inputs: { sampleData: '{' } }).includes('role="alert"'));
 check('a live mount shows the spinner before anything is known — never "no changes"', (() => {
     const markup = html({ contextInfo: RECORD });
     return markup.includes('resx:AuditHistory_Loading') && !markup.includes('resx:AuditHistory_NoChanges');
@@ -800,23 +829,31 @@ async function rigSelfCheck() {
      */
     const auditQuery = '?$select=auditid,createdon,action,_objectid_value&$filter=_objectid_value eq c1&$orderby=createdon desc';
     const first = await ctx.webAPI.retrieveMultipleRecords('audit', auditQuery, 10);
-    const second = await ctx.webAPI.retrieveMultipleRecords('audit', first.nextLink, 10);
-    const third = await ctx.webAPI.retrieveMultipleRecords('audit', second.nextLink, 10);
     check(
-        'rig: the audit table pages by nextLink, newest first, and the link carries the filter',
-        first.entities.length === 10 && second.entities.length === 10 && third.entities.length === 6 && third.nextLink === undefined
-            && first.entities[0].createdon > second.entities[0].createdon
-            && second.entities.every((row) => row._objectid_value === 'c1'),
-        `${first.entities.length}/${second.entities.length}/${third.entities.length}`,
+        'rig: the audit table ignores maxPageSize — every row, newest first, nextLink an empty string (measured)',
+        first.entities.length === 26 && first.nextLink === '' && first.entities[0].createdon > first.entities[25].createdon
+            && first.entities.every((row) => row._objectid_value === 'c1'),
+        `${first.entities.length} ${JSON.stringify(first.nextLink)}`,
+    );
+    const paged = await ctx.webAPI.retrieveMultipleRecords('account', '?$select=accountid,name&$filter=_parentaccountid_value eq r1&$orderby=name asc', 1);
+    const next = await ctx.webAPI.retrieveMultipleRecords('account', paged.nextLink, 1);
+    check(
+        'rig: any other table pages by a nextLink that carries the filter and the order',
+        paged.entities.length === 1 && next.entities.length === 1 && paged.entities[0].accountid === 'o1' && next.entities[0].accountid === 'p1',
+        JSON.stringify([paged.entities, next.entities]),
     );
 
     const api = `${ctx.page.getClientUrl()}/api/data/v9.2`;
-    const detail = await fetch(`${api}/audits(${first.entities[1].auditid})/Microsoft.Dynamics.CRM.RetrieveAuditDetails`).then((r) => r.json());
+    const detail = await fetch(`${api}/audits(${first.entities[1].auditid})/Microsoft.Dynamics.CRM.RetrieveAuditDetails`, { headers: { Prefer: 'odata.include-annotations="*"' } }).then((r) => r.json());
+    const plain = await fetch(`${api}/audits(${first.entities[1].auditid})/Microsoft.Dynamics.CRM.RetrieveAuditDetails`).then((r) => r.json());
     check(
-        'rig: RetrieveAuditDetails answers by audit id, lookups annotated, and no AuditRecord',
+        'rig: RetrieveAuditDetails answers by audit id with the AuditRecord — who, when, action — annotated only under Prefer',
         detail.AuditDetail['@odata.type'] === '#Microsoft.Dynamics.CRM.AttributeAuditDetail'
             && detail.AuditDetail.NewValue['_parentaccountid_value@Microsoft.Dynamics.CRM.lookuplogicalname'] === 'account'
-            && !('AuditRecord' in detail.AuditDetail),
+            && detail.AuditDetail.AuditRecord.auditid === first.entities[1].auditid
+            && detail.AuditDetail.AuditRecord['_userid_value@OData.Community.Display.V1.FormattedValue'] === 'Priya Raman'
+            && plain.AuditDetail.AuditRecord.auditid === first.entities[1].auditid
+            && plain.AuditDetail.AuditRecord['_userid_value@OData.Community.Display.V1.FormattedValue'] === undefined,
         JSON.stringify(Object.keys(detail.AuditDetail)),
     );
     const unknown = await fetch(`${api}/audits(00000000-0000-0000-0000-0000000000ff)/Microsoft.Dynamics.CRM.RetrieveAuditDetails`);
@@ -826,9 +863,11 @@ async function rigSelfCheck() {
     const paging = encodeURIComponent(JSON.stringify({ PageNumber: 2, Count: 10, ReturnTotalRecordCount: true }));
     const history = await fetch(`${api}/RetrieveRecordChangeHistory(Target=@t,PagingInfo=@p)?@t=${target}&@p=${paging}`).then((r) => r.json());
     check(
-        'rig: RetrieveRecordChangeHistory pages by @p and counts the whole history',
+        'rig: RetrieveRecordChangeHistory pages by @p, counts the whole history, and every detail carries its AuditRecord',
         history.AuditDetailCollection.AuditDetails.length === 10 && history.AuditDetailCollection.TotalRecordCount === 26
-            && history.AuditDetailCollection.MoreRecords === true,
+            && history.AuditDetailCollection.MoreRecords === true
+            && history.AuditDetailCollection.AuditDetails.every((d) => typeof d.AuditRecord?.auditid === 'string')
+            && history.AuditDetailCollection.AuditDetails[0].AuditRecord.auditid === first.entities[10].auditid,
         JSON.stringify([history.AuditDetailCollection.AuditDetails.length, history.AuditDetailCollection.TotalRecordCount]),
     );
 

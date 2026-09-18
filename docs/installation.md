@@ -39,7 +39,7 @@ the control is added to a form:
 
 | Feature | What it is used for |
 | --- | --- |
-| `WebAPI` | Reading the record's audit rows, and whether auditing is on for the environment |
+| `WebAPI` | Whether auditing is on for the environment, and the audit table's rows for a user who may read those but not the history |
 | `Utility` | Display names for the columns in the list |
 
 Both are declared **optional**. A host that provides neither still loads the
@@ -47,8 +47,8 @@ control — it says audit history is not available on this host rather than
 failing to appear. Without `Utility` alone, columns are listed by their
 logical names.
 
-The control makes two more reads that no feature gates: same-origin requests
-to the organisation's Web API for each row's old and new values
-(`audits(…)/RetrieveAuditDetails`, a Dataverse function `context.webAPI`
-cannot call) and for whether the table is audited
-(`EntityDefinitions(…)`). Nothing leaves the organisation.
+The history itself is read with same-origin requests to the organisation's
+Web API that no feature gates: one per page to `RetrieveRecordChangeHistory`
+(a Dataverse function `context.webAPI` cannot call), which answers who, when
+and the old and new values together, and one to `EntityDefinitions(…)` for
+whether the table is audited. Nothing leaves the organisation.

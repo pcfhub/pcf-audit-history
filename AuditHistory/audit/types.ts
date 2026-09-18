@@ -43,13 +43,15 @@ export type Detail =
     | { kind: 'relationship'; name: string; targets: string[] }
     | { kind: 'other'; type: string };
 
-/** How the next page is asked for. */
+/** How the next page is asked for: the functions page by number (and cookie); the fallback slices the rows it holds. */
 export type Cursor =
-    | { kind: 'nextLink'; url: string }
-    | { kind: 'keyset'; before: string };
+    | { kind: 'page'; pageNumber: number; cookie?: string }
+    | { kind: 'offset'; offset: number };
 
 export interface AuditPage {
     rows: AuditRow[];
+    /** The values that came with the rows — every row's, on the record-history route — keyed by row id. */
+    details?: Record<string, Detail>;
     next: Cursor | null;
     /** The whole history's size when the source knows it, else `null`. */
     total: number | null;

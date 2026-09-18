@@ -76,10 +76,21 @@ export function reduce(state: State, action: Action): State {
         case 'pageLoaded': {
             const seen = new Set(state.rows.map((row) => row.id));
             const fresh = action.page.rows.filter((row) => !seen.has(row.id));
+            const details = { ...state.details };
+
+            // The record-history route hands the values over with the rows.
+            for (const row of fresh) {
+                const detail = action.page.details?.[row.id];
+
+                if (detail) {
+                    details[row.id] = { status: 'loaded', detail };
+                }
+            }
 
             return {
                 ...state,
                 rows: [...state.rows, ...fresh],
+                details,
                 cursor: action.page.next,
                 total: action.page.total ?? state.total,
                 loading: null,

@@ -16,10 +16,9 @@ portal and check *Enable auditing* on the ones that matter.
 
 ## Why does a row say "You can see that this change happened, but not its values"?
 
-The rows come from the audit table and the values from a separate Dataverse
-message, and they need different privileges: **View Audit Summary** for the
-rows, **View Audit History** for the values. A user with the first and not
-the second sees the list and that sentence on every row.
+The history needs the **View Audit History** privilege. A user without it,
+who still has **View Audit Summary**, gets the rows from the audit table —
+when, who, what kind of change — and that sentence in place of the values.
 
 ## Why is a value cut off with "…"?
 

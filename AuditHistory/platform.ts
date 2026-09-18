@@ -42,6 +42,13 @@ export interface HostReading {
     clientUrl: string | null;
     /** Reads display names for columns, or `null` without the Utility feature. */
     columnLabels: ((table: string, columns: string[]) => Promise<Record<string, string>>) | null;
+    /**
+     * The table's entity-set name (`accounts`), which the unbound functions
+     * need for an entity reference — through `utils.getEntityMetadata` when
+     * the host has it (1 ms, P11), else the `EntityDefinitions` fetch (P8),
+     * else `null`, and never guessed from the logical name.
+     */
+    entitySet: (table: string) => Promise<string | null>;
     columnScope: boolean;
     pageSize: number | null;
     sampleData: string | null;
@@ -177,18 +184,60 @@ export function retrieveAuditDetails(clientUrl: string, auditId: string): Promis
 }
 
 /**
- * `EntityDefinitions(LogicalName='x')?$select=IsAuditEnabled` — a
- * `BooleanManagedProperty`, read as `.Value`. `null` when the host could
- * not say: a refused read is not "auditing is off".
+ * `EntityDefinitions(LogicalName='x')?$select=IsAuditEnabled,EntitySetName`,
+ * read once per table and organisation. `IsAuditEnabled` is a
+ * `BooleanManagedProperty`, read as `.Value` (measured: `{ Value,
+ * CanBeChanged, ManagedPropertyLogicalName }`). Cached per organisation and
+ * table for the life of the page; a failure is not cached.
  */
-export function tableAuditEnabled(clientUrl: string, table: string): Promise<boolean | null> {
-    return fetchJson(clientUrl, tableDefinitionPath(table), false)
-        .then((answer) => {
-            const value = answer.ok ? answer.body?.IsAuditEnabled?.Value : undefined;
+const definitionCache = new Map<string, Promise<{ audited: boolean | null; entitySet: string | null }>>();
 
-            return typeof value === 'boolean' ? value : null;
+export function tableDefinition(clientUrl: string, table: string): Promise<{ audited: boolean | null; entitySet: string | null }> {
+    const key = `${clientUrl}|${table}`;
+    const cached = definitionCache.get(key);
+
+    if (cached) {
+        return cached;
+    }
+
+    const answer = fetchJson(clientUrl, tableDefinitionPath(table), false)
+        .then((response) => {
+            if (!response.ok) {
+                definitionCache.delete(key);
+            }
+
+            const audited = response.ok ? response.body?.IsAuditEnabled?.Value : undefined;
+            const entitySet = response.ok ? response.body?.EntitySetName : undefined;
+
+            return {
+                audited: typeof audited === 'boolean' ? audited : null,
+                entitySet: typeof entitySet === 'string' && entitySet !== '' ? entitySet : null,
+            };
         })
-        .catch(() => null);
+        .catch(() => {
+            definitionCache.delete(key);
+
+            return { audited: null, entitySet: null };
+        });
+
+    definitionCache.set(key, answer);
+
+    return answer;
+}
+
+/** For the suite, and for a page that changes organisation under the control — which no form does. */
+export function forgetDefinitions(): void {
+    definitionCache.clear();
+}
+
+/** `null` when the host could not say: a refused read is not "auditing is off". */
+export function tableAuditEnabled(clientUrl: string, table: string): Promise<boolean | null> {
+    return tableDefinition(clientUrl, table).then((definition) => definition.audited);
+}
+
+/** The function answers, annotated — the `AuditRecord`'s formatted values arrive only under `Prefer` (P13). */
+export function retrieveHistory(clientUrl: string, path: string): Promise<FetchAnswer> {
+    return fetchJson(clientUrl, path, true);
 }
 
 /** `organizations?$select=isauditenabled` through the Web API — the `maxuploadfilesize` pattern. */
@@ -246,10 +295,32 @@ function columnLabelsReader(context: ComponentFramework.Context<IInputs>): HostR
         });
 }
 
+function entitySetReader(context: ComponentFramework.Context<IInputs>, clientUrl: string | null): HostReading['entitySet'] {
+    const utils = (context as any).utils;
+
+    return (table: string) => {
+        const fromUtils: Promise<string | null> = typeof utils?.getEntityMetadata === 'function'
+            ? utils.getEntityMetadata(table).then(
+                (metadata: any) => (typeof metadata?.EntitySetName === 'string' && metadata.EntitySetName !== '' ? metadata.EntitySetName : null),
+                () => null,
+            )
+            : Promise.resolve(null);
+
+        return fromUtils.then((name) => {
+            if (name !== null || clientUrl === null) {
+                return name;
+            }
+
+            return tableDefinition(clientUrl, table).then((definition) => definition.entitySet);
+        });
+    };
+}
+
 export function readHost(context: ComponentFramework.Context<IInputs>): HostReading {
     const parameter: any = context.parameters.value;
     const inputs: any = context.parameters;
     const webAPI: any = (context as any).webAPI;
+    const clientUrl = lookupClientUrl(context);
     const security = parameter?.security;
     const width = context.mode.allocatedWidth;
     const record = resolveRecord(context);
@@ -262,8 +333,9 @@ export function readHost(context: ComponentFramework.Context<IInputs>): HostRead
         recordId: record.recordId,
         column: resolveBoundColumn(parameter),
         columnLabel: typeof parameter?.attributes?.DisplayName === 'string' ? parameter.attributes.DisplayName : '',
-        clientUrl: lookupClientUrl(context),
+        clientUrl,
         columnLabels: columnLabelsReader(context),
+        entitySet: entitySetReader(context, clientUrl),
         columnScope: inputs?.columnScope?.raw === true,
         pageSize: typeof pageSize === 'number' ? pageSize : null,
         sampleData: typeof sample === 'string' ? sample : null,

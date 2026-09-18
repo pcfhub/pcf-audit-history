@@ -88,8 +88,8 @@
 
     <!--
       Changes fetched per page, and the size of each "Load more". Clamped to
-      1–100 by the control; every row costs one request for its old and new
-      values, so this is a request count as much as a row count.
+      1–100 by the control. A page is one request — the record-history
+      function answers who, when and the values together.
     -->
     <property name="pageSize"
               display-name-key="pageSize_Name"
@@ -174,11 +174,14 @@
       without `WebAPI` there is no list at all and the control says so;
       without `Utility` the column labels are logical names.
 
-      The audit detail — the old value beside the new — comes from a Web API
-      *function* (`audits(<id>)/Microsoft.Dynamics.CRM.RetrieveAuditDetails`)
-      that `context.webAPI` cannot call, so it is a same-origin `fetch` of
-      the organisation URL. No feature gates that; the same is true of the
-      `EntityDefinitions` read that says whether the table is audited.
+      The history itself comes from a Web API *function*
+      (`RetrieveRecordChangeHistory`, one request per page, who and when and
+      the values together) that `context.webAPI` cannot call, so it is a
+      same-origin `fetch` of the organisation URL. No feature gates that; the
+      same is true of the `EntityDefinitions` read that says whether the
+      table is audited. `WebAPI` is for the organisation's audit switch and
+      for the fallback — the audit table's rows for a user who may read the
+      rows but not the history.
     -->
     <feature-usage>
       <uses-feature name="WebAPI" required="false" />

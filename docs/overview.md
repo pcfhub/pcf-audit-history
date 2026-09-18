@@ -28,17 +28,18 @@ control puts it where the question is asked.
   the history is two privileges, not one. The control tells those apart:
   *Auditing is turned off for this table* is a different sentence from *No
   changes have been recorded*, and a maker fixes them in different places.
-- **It reads what the platform records, as the platform formats it.** The rows
-  come from the audit table and the values from Dataverse's own audit detail
-  message, so a currency arrives with its symbol and a user as a name. A value
-  the platform cut at its 5 KB cap is marked as cut.
+- **It reads what the platform records, as the platform formats it.** One
+  request per page to Dataverse's own record-history message, which answers
+  who, when and the values together, so a date is in the user's zone, a
+  choice is its label and a user is a name. A value the platform cut at its
+  5 KB cap is marked as cut.
 - **A share is a share, and a relationship is a relationship.** Not every
   audited event is a column changing. Sharing a record, relating it to
   another, assigning it — each is shown for what it is rather than as an empty
   change.
-- **It pages.** A page at a time, sized by you, with *Load more* at the bottom;
-  a column filter that finds nothing on the loaded pages reads on, a few pages
-  at most, before saying so.
+- **It pages, and it counts.** A page at a time, sized by you, *Showing 20
+  of 143* at the top and *Load more* at the bottom. *Only this column* is
+  the server's own answer for that column, complete and counted.
 - **It never writes.** The control is bound to a column only to have a place
   on the form and, optionally, a column to scope to. It reads nothing from
   that column and leaves it exactly as it found it.

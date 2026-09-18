@@ -19,17 +19,17 @@ formats them. A filter narrows the list to one column; bound to a column with
 the same information behind **Related → Audit history**, a page away from the
 record; this puts it where the question is asked. Read-only in this version.
 
-Two decisions a reader will otherwise question. **The rows and the values come
-from two places.** Dataverse's own `RetrieveRecordChangeHistory` function
-returns old and new values with no record of who made the change or when —
-the Web API leaves `AuditRecord` out of every `AuditDetail`, as Learn says —
-so the control reads the rows from the `audit` table through `context.webAPI`
-and each row's values through a same-origin `fetch` of the
-`audits(<id>)/Microsoft.Dynamics.CRM.RetrieveAuditDetails` function (which
-`context.webAPI` cannot call), correlated by audit id. A page of twenty is
-twenty-one requests, in parallel. And **an empty list says why**: auditing
-off for the environment, off for the table, a missing privilege, or simply
-nothing recorded — four sentences, because a maker fixes them in four places.
+Two decisions a reader will otherwise question. **The history is one request
+per page, through a function `context.webAPI` cannot call.** Dataverse's
+`RetrieveRecordChangeHistory` answers a page of changes with who, when and
+the old and new values together — Learn says the Web API omits the who and
+when (`AuditRecord`), and measured on a real form it does not — so the control
+fetches it same-origin, pages it by `PagingInfo`, and shows its
+`TotalRecordCount`. The `audit` table through `context.webAPI` is the
+fallback for a user who may read the rows but not the history. And **an
+empty list says why**: auditing off for the environment, off for the table, a
+missing privilege, or simply nothing recorded — four sentences, because a
+maker fixes them in four places.
 
 The bound column is a place on the form and, optionally, a scope. The control
 never reads its value and never writes it.
@@ -40,21 +40,22 @@ never reads its value and never writes it.
 | --- | --- | --- | --- | --- |
 | `value` | any column (type group) | bound, **required** | — | The column the control sits on; read for its name only, never written. |
 | `columnScope` | TwoOptions | input | off | On: only changes to the bound column. |
-| `pageSize` | Whole.None | input | `20` | Changes per page and per *Load more*, 1–100; each costs one request for its values. |
+| `pageSize` | Whole.None | input | `20` | Changes per page and per *Load more*, 1–100; a page is one request. |
 | `recordId`, `recordEntity` | SingleLine.Text | input | — | The record, for a host that does not say — the platform FAQ's fallback. A form supplies it. |
 | `sampleData` | Multiple | input | — | A JSON history rendered instead of the record's — for the hub's demo. Blank on a real form. |
 
 A React (virtual) control on the platform's React 16.14 and Fluent UI 9.46;
 neither is bundled. Strings ship in English, German, French, Japanese and
 Spanish. Two features are declared, both optional, and both prompt the maker
-at install: `WebAPI` (the audit rows, and whether the environment audits)
-and `Utility` (display names for columns). The values and the table's
-audit setting are read with a same-origin `fetch` that no feature gates.
+at install: `WebAPI` (whether the environment audits, and the fallback's
+rows) and `Utility` (display names, and the entity-set name the function
+needs). The history and the table's audit setting are read with a
+same-origin `fetch` that no feature gates.
 
 ## On the hub
 
 `demo.fidelity` is **mocked**. The control's whole content comes from
-`context.webAPI` and a same-origin function call, neither of which the hub's
+a same-origin function call and `context.webAPI`, neither of which the hub's
 harness supplies, so every preset carries a JSON history in `sampleData` and
 the control renders that instead of querying. Everything that never leaves
 the browser is real there — opening a row, the values table, a cleared

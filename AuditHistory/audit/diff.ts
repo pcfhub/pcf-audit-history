@@ -93,7 +93,14 @@ export function diffAttributes(oldBag: unknown, newBag: unknown, deleted: unknow
         }
     }
 
-    return columns
+    /*
+     * A money column comes with its base-currency shadow — `creditlimit`
+     * and `creditlimit_base`, measured (P5, run 2) — and the shadow is the
+     * same change in the organisation's currency, not a second one.
+     */
+    const shown = columns.filter((column) => !(column.endsWith('_base') && columns.includes(column.slice(0, -5))));
+
+    return shown
         .map((column): Change => {
             const oldText = olds.get(column);
             const newText = gone.includes(column) ? '' : news.get(column);
