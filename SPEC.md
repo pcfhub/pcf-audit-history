@@ -45,6 +45,59 @@ needed.
 | P14 | The same on every detail of `RetrieveRecordChangeHistory` | the one-call-per-page route | Measured: every detail's `AuditRecord` is the row, annotated — with `transactionid` zeroed and `versionnumber` 0 on this function (real on the bound one); neither is read. |
 | P15 | Does `RetrieveRecordChangeHistory` page by `PageNumber` alone, and with the cookie | the cursor | Both: page 2 of 2 by `PageNumber` alone answered the next two ids; page 1 returned a 509-character `PagingCookie`; page 2 with that cookie answered the same two ids. The control sends the cookie when it has one, as Learn asks, and the number always. |
 
+## 0.2.0 — Restore, and the questions it rests on
+
+The request-board item that chose this control (9 votes) and the thing the
+platform's own audit tab could do that 0.1.0 could not: put a value back.
+Microsoft's May 2026 change stops sending before/after values to Purview and
+points at Dataverse's audit APIs as the source — so the in-app history is
+where a value is now put back from.
+
+**The shape, before the probe:** a *Restore* on each line of an **Update**
+row's values, restoring the **old** side — for a `set` line that is a clear
+— and one *Restore all* per row when more than one line can be. Opt-in
+through a `showRestore` input, off by default, because a write is a
+destructive command whatever it is called (skill: *Confirm, then destroy*).
+The write is `webAPI.updateRecord(table, id, payload)`: a primitive as the
+detail's own raw value; a lookup as
+`<associatednavigationproperty>@odata.bind: /<entitySet>(<id>)` with the
+navigation property **read off the detail's annotation** — the one place the
+catalogue has it without a `ManyToOneRelationships` read — and the entity
+set from `getEntityMetadata(lookuplogicalname).EntitySetName`; `null`
+clears. Confirmed through `openConfirmDialog`; no dialog, no Restore. Not
+offered: a truncated value, a column the metadata says is not
+`IsValidForUpdate`, a `_base` shadow, a party list, and any action but an
+Update (a Create has nothing to restore to; Assign and Set State are
+operations with cascades, not values). After the write the list reloads
+from page 1, so the restore shows as the newest row — the platform audits
+it like any other change — and the form, which the write went around, is
+told it is stale.
+
+Every claim above that a form has to answer is a question below. **An
+answer that goes the wrong way removes the feature that rests on it.** The
+0.1.1 build is the probe: `AuditHistory/probe.tsx` reads on mount and writes
+only behind a pressed button, and every answer prints into the control and
+under `[audit-history probe 0.1.1]` in the console.
+
+**Before opening the form**, on *City Power & Light (sample)*, change and
+save: a **date** column, a **Two Options** column (*Do not allow Emails*),
+a **choice** (*Industry*), a **whole number** (*Number of Employees*), a
+**decimal** (*Address 1: Latitude*), **Credit Limit** (money), one **text**
+column, and make sure **Parent Account** is set. Then open the *Audit
+History* tab and let the read half run; press the buttons in order.
+
+| # | Question | Decides | Answer |
+| --- | --- | --- | --- |
+| R1 | On every `AttributeAuditDetail` under `Prefer`, the **raw** value beside the formatted one, per column type: text, whole, decimal (P5 saw a formatted "1.00000" — what is the raw?), money, date (an ISO instant? a bare day for Date Only?), choice (integer), Two Options (boolean), multi-select (a string of integers?), lookup (`_x_value` GUID with `lookuplogicalname`, `associatednavigationproperty`, `FormattedValue`). And the `@odata.type` on the bag. | `audit/diff.ts` keeps `oldRaw`/`newRaw` and a lookup's annotations; whether a date restore can send the raw back untouched | |
+| R2 | `webAPI.updateRecord('account', id, { …every primitive old value of the newest Update… })`: resolves? read back through `retrieveRecord` with `$select` — same values? Then the same with the new values (the undo). | the primitive restore; whether a money, a decimal, a date and a Two Options each take their own raw back | |
+| R3 | A lookup: `{ '<nav>@odata.bind': null }` with `<nav>` read off the detail's `associatednavigationproperty` — resolves, reads back `null`? Then `{ '<nav>@odata.bind': '/accounts(<id>)' }` back — resolves, reads back the id? Is `<nav>` for `parentaccountid` the logical name? | the lookup restore and the lookup clear from the annotation alone, no `ManyToOneRelationships` read | |
+| R4 | After R2, the form: is the field on the form stale? Does `navigation.openForm({ entityName: 'account', entityId })` on the **same** record reload it in place with the written value? With an unsaved edit on the form, does it prompt, save, or discard? | what *Refresh* does after a restore | |
+| R5 | `mode.isControlDisabled` and `parameters.value.security` on the live form; then **deactivate** the record, reload, run again: `isControlDisabled` true on an inactive record's read-only form? (Reactivate after.) | whether the read-only form hides Restore | |
+| R6 | `utils.getEntityMetadata('account', [cols])` items: beyond `LogicalName`/`DisplayName`/`AttributeType`/`AttributeTypeName` (P11) — `IsValidForUpdate`? `Targets` on a lookup? The prototype's getters listed. And `getEntityMetadata('contact')`, `('systemuser')`, `('team')` `EntitySetName` — the lookup targets. Fallback: `EntityDefinitions(LogicalName='account')/Attributes?$select=LogicalName,AttributeType,IsValidForUpdate` — status, count, elapsed. | where *not updatable* comes from, and whether a lookup target's entity set needs a second fetch | |
+| R7 | `utils.hasEntityPrivilege('account', 3 /* Write */, 0..3)` — what each depth answers for this user; `hasEntityPrivilege('account', 2 /* Read */, 0)` as the control | whether `Basic` is the depth to ask at, and whether the method is there | |
+| R8 | What the audit detail of the R2 write itself looks like on the next read: action 2, this user, the old and new sides swapped from the row it restored, one row for the whole payload | that a restore is audited like a change, and that reloading page 1 is proof of the write | |
+| R9 | The refusal shape of `updateRecord` on a column that cannot be written (`address1_composite`) and on a read-only column (`createdon`) — `errorCode`, `message` | the sentence a refused restore shows; the rig's refusal | |
+
 ## Where the rows come from
 
 **One request per page.** `RetrieveRecordChangeHistory(Target=@t,PagingInfo=@p)`
