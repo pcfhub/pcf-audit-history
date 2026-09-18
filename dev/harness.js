@@ -262,6 +262,21 @@
          */
         document.querySelector('.harness-controls').addEventListener('change', render);
 
+        /*
+         * Whether the functions answer, whether the audit table can be read
+         * and whether auditing is on are facts about the *organisation*, and
+         * the control memoises its source per organisation URL — correctly,
+         * because none of them changes under a form. So flipping one of those
+         * switches is a different organisation: take a fresh URL, which also
+         * changes the key the list is built from, and it reloads.
+         */
+        ['harness-auditstatus', 'harness-auditsummary', 'harness-auditorg', 'harness-audittable', 'harness-webapifails', 'harness-relationships'].forEach(function (id) {
+            document.getElementById(id).addEventListener('change', function () {
+                clientUrl = host.nextClientUrl();
+                render();
+            });
+        });
+
         // Typed into the field's *column*, not into the control — this is the
         // platform handing down a new bound value, which is a different event
         // from the user typing and hits a different branch.
