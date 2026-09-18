@@ -6,31 +6,53 @@ order: 1
 
 # Audit History
 
-<!--
-  The landing page for the component on PCFHub. Answer, in this order: what it
-  does, who it is for, and what makes it different from doing it another way.
-
-  Frontmatter above is read by the hub:
-    title        the page heading and the nav label
-    description  the meta description and the search snippet
-    order        position in the sidebar
-    appliesTo    a semver range — see migration.md
-    draft        `true` keeps the page out of the hub entirely
--->
-
 A record's audit history on the form: who changed what, when, and the old value beside the new.
 
-::image{src=media/screenshot.png alt="Audit History on a form" zoom}
+::image{src=media/screenshot.png alt="An account form section listing the record's changes newest first — a date, a user and an action per row — with one row opened to show the Parent Account column going from empty to Contoso Europe and another showing Website cleared" zoom}
+
+Place it on any column of a form and it lists the record's audited changes,
+newest first: when, by whom, and what kind of change. Open a row and every
+column that changed is there with its old value beside its new one — a lookup
+as the related record's name, a choice as its label, a date as the platform
+formats it. Filter the list to one column, or bind the control to a column
+and switch *Only this column* on to make it that column's own history.
+
+Model-driven apps keep the same information behind **Related → Audit
+history**, a page away from the record and a grid apart from the form. This
+control puts it where the question is asked.
 
 ## Why this one
 
-- What it does that the built-in control does not.
-- The constraint it was built around.
+- **It is honest about why the list is empty.** Auditing is a switch at three
+  levels — the environment, the table, the column — and a user's access to
+  the history is two privileges, not one. The control tells those apart:
+  *Auditing is turned off for this table* is a different sentence from *No
+  changes have been recorded*, and a maker fixes them in different places.
+- **It reads what the platform records, as the platform formats it.** The rows
+  come from the audit table and the values from Dataverse's own audit detail
+  message, so a currency arrives with its symbol and a user as a name. A value
+  the platform cut at its 5 KB cap is marked as cut.
+- **A share is a share, and a relationship is a relationship.** Not every
+  audited event is a column changing. Sharing a record, relating it to
+  another, assigning it — each is shown for what it is rather than as an empty
+  change.
+- **It pages.** A page at a time, sized by you, with *Load more* at the bottom;
+  a column filter that finds nothing on the loaded pages reads on, a few pages
+  at most, before saying so.
+- **It never writes.** The control is bound to a column only to have a place
+  on the form and, optionally, a column to scope to. It reads nothing from
+  that column and leaves it exactly as it found it.
 
 ## What it works with
 
-:::callout{type=info}
-Say plainly which hosts are supported — model-driven forms, canvas apps, custom
-pages — and which are not. This is the paragraph that saves a reader twenty
-minutes.
-:::
+| Host | Works | Notes |
+| --- | --- | --- |
+| Model-driven form (web) | Yes | |
+| Model-driven form (phone, tablet) | Layout, yes | Audit history itself is not available in the mobile app; not yet measured there |
+| Canvas app | No | No `context.webAPI`, no record identity, no organisation URL to call |
+| Power Pages | No | No Web API from a code component there |
+
+## What it does not do
+
+It is read-only in this version: there is no *Restore* of an old value. See
+[Limitations](limitations.md) for what else was decided against.

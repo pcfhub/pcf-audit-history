@@ -9,76 +9,59 @@ Documentation lives on [PCFHub](https://pcfhub.dev/components/pcf-audit-history)
 from the `docs/` directory in this repository. Edit the Markdown here; the hub
 recompiles it.
 
-<!--
-  This README is for someone standing in the repository — a maintainer, or
-  somebody deciding whether to install the control. The hub publishes `docs/`,
-  not this file, so do not duplicate the documentation here.
-
-  The three sections below are the ones worth writing by hand. Everything after
-  them is the same in every repository and needs no edits.
-
-  **Each carries a placeholder, and `npm run check` fails while one remains.**
-  That is deliberate: an unwritten README is the first thing a visitor to the
-  repository sees, and the version of this file that shipped before had worked
-  examples sitting in it that read as real content. One of them — a bound
-  `value` property — was wrong for every control that is not a field control,
-  and reached a published repository.
-
-  Delete these comments once the sections are written. They are instructions to
-  you, and they are noise on a public page.
--->
-
 ## What it does
 
-__WHAT_IT_DOES__
+Placed on any column of a model-driven form, it lists the record's audited
+changes newest first — when, by whom, what kind of change — and opens each
+one to the columns that changed, old value beside new, as the platform
+formats them. A filter narrows the list to one column; bound to a column with
+*Only this column* on, it is that column's own history. Model-driven apps keep
+the same information behind **Related → Audit history**, a page away from the
+record; this puts it where the question is asked. Read-only in this version.
 
-<!--
-  A few paragraphs, not a feature list. Answer what the built-in control does
-  not do, then spend the rest on the one or two decisions a reader would
-  otherwise question — the binding shape, a behaviour that looks like a bug
-  until you know why, a constraint you chose to accept.
+Two decisions a reader will otherwise question. **The rows and the values come
+from two places.** Dataverse's own `RetrieveRecordChangeHistory` function
+returns old and new values with no record of who made the change or when —
+the Web API leaves `AuditRecord` out of every `AuditDetail`, as Learn says —
+so the control reads the rows from the `audit` table through `context.webAPI`
+and each row's values through a same-origin `fetch` of the
+`audits(<id>)/Microsoft.Dynamics.CRM.RetrieveAuditDetails` function (which
+`context.webAPI` cannot call), correlated by audit id. A page of twenty is
+twenty-one requests, in parallel. And **an empty list says why**: auditing
+off for the environment, off for the table, a missing privilege, or simply
+nothing recorded — four sentences, because a maker fixes them in four places.
 
-  This is the section that saves an issue being opened.
--->
+The bound column is a place on the form and, optionally, a scope. The control
+never reads its value and never writes it.
 
 ## Properties
 
-__PROPERTIES__
+| Property | Type | Usage | Default | What it controls |
+| --- | --- | --- | --- | --- |
+| `value` | any column (type group) | bound, **required** | — | The column the control sits on; read for its name only, never written. |
+| `columnScope` | TwoOptions | input | off | On: only changes to the bound column. |
+| `pageSize` | Whole.None | input | `20` | Changes per page and per *Load more*, 1–100; each costs one request for its values. |
+| `recordId`, `recordEntity` | SingleLine.Text | input | — | The record, for a host that does not say — the platform FAQ's fallback. A form supplies it. |
+| `sampleData` | Multiple | input | — | A JSON history rendered instead of the record's — for the hub's demo. Blank on a real form. |
 
-<!--
-  The whole configuration surface, including the defaults. `docs/api.md`
-  generates its tables from the manifest; this one is hand-written, so keep it
-  short enough to stay true. Read them out of the manifest rather than from
-  memory, and check them against `generated/ManifestTypes.d.ts`.
-
-  A field control's table looks like this — one row per property, and for a
-  dataset control a second table for the `property-set` roles above it, giving
-  both the display name a maker sees and the manifest name the code looks up by:
-
-      | Property | Type | Usage | Default | What it controls |
-      | --- | --- | --- | --- | --- |
-      | `value` | SingleLine.Text | bound, **required** | — | The column this control reads and writes |
-
-  Follow it with the notes that do not fit a table: which languages the .resx
-  ship, whether the control bundles a framework or uses the platform's, which
-  `uses-feature` permissions a maker is asked for at install, and any property
-  whose accepted values need spelling out.
--->
+A React (virtual) control on the platform's React 16.14 and Fluent UI 9.46;
+neither is bundled. Strings ship in English, German, French, Japanese and
+Spanish. Two features are declared, both optional, and both prompt the maker
+at install: `WebAPI` (the audit rows, and whether the environment audits)
+and `Utility` (display names for columns). The values and the table's
+audit setting are read with a same-origin `fetch` that no feature gates.
 
 ## On the hub
 
-__ON_THE_HUB__
-
-<!--
-  What `demo.fidelity` is, and *why* it is that and not the next one up. A
-  `limited` demo should say which interactions do not work there; a `full` one
-  is worth explaining, because it follows from the control not reaching Web API,
-  device or navigation — which is also one fewer permission prompt for the maker
-  installing it.
-
-  Mention what the presets cover. Delete this section if fidelity is `none` —
-  and delete the placeholder with it, or the check will go on failing.
--->
+`demo.fidelity` is **mocked**. The control's whole content comes from
+`context.webAPI` and a same-origin function call, neither of which the hub's
+harness supplies, so every preset carries a JSON history in `sampleData` and
+the control renders that instead of querying. Everything that never leaves
+the browser is real there — opening a row, the values table, a cleared
+column, the 5 KB note, a share and a relationship as their own kinds, the
+filter, the scope chip, paging, the narrow layout, dark and RTL. Seven
+presets: a typical history, three pages, *Only this column*, just created,
+no changes, auditing off for the table, and the not-available state.
 
 ## Install
 

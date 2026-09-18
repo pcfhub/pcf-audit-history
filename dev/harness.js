@@ -88,7 +88,7 @@
             captureImage: document.getElementById('harness-camera').value === 'photo' ? PHOTO : null,
             contextInfo:
                 document.getElementById('harness-identity').value === 'contextinfo'
-                    ? { entityId: '0f8fad5b-d9cb-469f-a165-70867728950e', entityTypeName: 'account' }
+                    ? { entityId: 'c1', entityTypeName: 'account' }
                     : null,
             webAPI: document.getElementById('harness-webapi').checked,
             utils: document.getElementById('harness-utils').checked,
@@ -112,6 +112,13 @@
                     : document.getElementById('harness-hierarchical').value === 'true',
             fixture: window.__pcfFixture,
             clientUrl: clientUrl,
+            inputs: {
+                columnScope: document.getElementById('harness-scope').checked,
+                pageSize: Number(document.getElementById('harness-pagesize').value),
+                recordId: document.getElementById('harness-recordid').value,
+                recordEntity: document.getElementById('harness-recordentity').value,
+                sampleData: document.getElementById('harness-sample').value,
+            },
         };
     }
 

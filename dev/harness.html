@@ -176,6 +176,30 @@
                 <span>Empty here is <code>''</code>; use Clear for <code>null</code>.</span>
             </label>
 
+            <label class="is-switch">
+                <input type="checkbox" id="harness-scope" />
+                Only this column (columnScope)
+            </label>
+
+            <label>
+                Page size
+                <input type="number" id="harness-pagesize" value="10" min="1" max="100" />
+                <span>Rows per page and per <em>Load more</em>; the fixture holds 26.</span>
+            </label>
+
+            <label>
+                Record id / table (the inputs)
+                <input type="text" id="harness-recordid" value="" placeholder="a GUID" />
+                <input type="text" id="harness-recordentity" value="" placeholder="account" />
+                <span>The FAQ's fallback when the host has no <code>contextInfo</code>.</span>
+            </label>
+
+            <label>
+                Sample data (demo only)
+                <textarea id="harness-sample" rows="3"></textarea>
+                <span>Non-empty and the control renders this instead of querying.</span>
+            </label>
+
             <label>
                 Field-level security
                 <select id="harness-security">
@@ -255,7 +279,7 @@
                 Record identity
                 <select id="harness-identity">
                     <option value="none">None (canvas, and the default)</option>
-                    <option value="contextinfo">mode.contextInfo</option>
+                    <option value="contextinfo">mode.contextInfo (the fixture's c1)</option>
                 </select>
                 <span>Undocumented and untyped; absent is the honest default.</span>
             </label>

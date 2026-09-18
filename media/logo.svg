@@ -1,20 +1,43 @@
 <svg width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Template placeholder. The top face of the PCFHub mark on its own: one
-       component rather than the whole stack.
+  <!-- A history arrow, with two lines inside it: the old one short, the new
+       one long.
 
-       Geometry, ramp and inner diamond are the original's verbatim, shifted
-       down 19 so a face that sits at the top of the full mark is centred when
-       it stands alone. The gradient is declared in userSpaceOnUse, so its
-       coordinates move by the same 19; leaving them at the original 29 and 9
-       would slide the ramp off the shape.
+       The control lists what a record used to be, so the silhouette is the
+       one everybody already reads as "history": a ring open at the top right
+       with an arrowhead turning back into it. Inside, two bars stacked, the
+       lower longer than the upper, which is a row of the values table, old
+       above new, and is what stops the ring reading as refresh or undo, whose
+       interiors are empty. The bars are in the ramp, not the interior white:
+       the ring is hollow, so a white bar inside it is the page.
 
-       Note: no double hyphen may appear in this comment, or the whole document
-       fails to parse as XML. -->
+       Rejected: a clock face with a list edge (a disc with hands is
+       pcf-sla-timer, and the list edge vanished at 32); a card with two
+       columns of bars (a card with rectangles in it is spoken for several
+       times over); a single bar crossed out above a bar (read as a strike
+       through, so "delete").
+
+       The ring is a stroke of 11, round caps, on a radius of 30: the widest
+       that leaves 6 real pixels of interior at 32, and at 9 the arrowhead
+       merged with the ring at 24. The bars are 9 tall, 6 apart, which is the
+       smallest gap that stays a gap at 24. The ramp is the family's, verbatim
+       and userSpaceOnUse, so the arrow is lit from the top right like its
+       neighbours.
+
+       Note: no double hyphen may appear in this comment, or the whole
+       document fails to parse as XML. -->
   <defs>
-    <linearGradient id="mark-top" x1="8" y1="48" x2="88" y2="28" gradientUnits="userSpaceOnUse">
+    <linearGradient id="audit-history-ramp" x1="6" y1="82" x2="90" y2="14" gradientUnits="userSpaceOnUse">
       <stop stop-color="#A684FF"/><stop offset="0.6" stop-color="#7C86FF"/><stop offset="1" stop-color="#00BCFF"/>
     </linearGradient>
   </defs>
-  <path d="M48 28 88 48 48 68 8 48Z" fill="url(#mark-top)"/>
-  <path d="M48 41.5 61 48 48 54.5 35 48Z" fill="#F8FAFC" fill-opacity="0.92"/>
+
+  <!-- The ring, open at the top right, drawn from the arrowhead's foot around the left to the gap's other side. -->
+  <path d="M58.3 23.8 A30 30 0 1 0 77.5 57.2" stroke="url(#audit-history-ramp)" stroke-width="11" stroke-linecap="round"/>
+
+  <!-- The arrowhead, turning back into the ring. -->
+  <path d="M70.5 28.2 L55.8 10.1 L47.6 32.7 Z" fill="url(#audit-history-ramp)" stroke="url(#audit-history-ramp)" stroke-width="4" stroke-linejoin="round"/>
+
+  <!-- Old above, new below. -->
+  <rect x="36" y="40" width="15" height="9" rx="4.5" fill="url(#audit-history-ramp)"/>
+  <rect x="36" y="55" width="26" height="9" rx="4.5" fill="url(#audit-history-ramp)"/>
 </svg>

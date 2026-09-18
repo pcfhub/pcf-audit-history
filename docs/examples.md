@@ -1,30 +1,33 @@
 ---
 title: Examples
-description: Worked configurations of Audit History.
-order: 6
+description: Three ways to place it.
+order: 4
 ---
 
 # Examples
 
-<!--
-  Two or three complete, copyable examples beat a dozen fragments. Each one:
-  the goal in a sentence, the configuration, and a picture of the result.
--->
+## The record's history, in a tab of its own
 
-## A basic setup
+Add a **History** tab to the main form with one full-width section, put any
+column in it — *Account Name* will do — with the label hidden, and add the
+control. Leave **Only this column** off and set **Page size** to 25.
 
-```powerfx
-Set(varValue, "Hello");
-```
+The tab reads as the record's timeline: every audited change, newest first,
+with the values a click away and a column filter at the top.
 
-::image{src=media/example-basic.png alt="The result of the basic setup"}
+## One column's history, beside the column
 
-## A more involved one
+Put the control on the column itself, in the section where the column already
+is, and switch **Only this column** on. A *Credit Limit* with its own history
+underneath — who raised it, from what, when — is the case this exists for.
 
-Describe the goal, then show the whole configuration rather than the diff from
-the example above — a reader arriving from search has not read the first one.
+Keep **Page size** small here; a column that changes rarely will make the
+control read a few pages looking for it.
 
-:::callout{type=success}
-If an example depends on a version, say which. `appliesTo` in the frontmatter
-pins the entire page; a note is better when only one example is new.
-:::
+::image{src=media/screenshot-scoped.png alt="The control under a Credit Limit column with a chip reading Only Credit Limit and two rows, each opened to show the old limit beside the new" zoom}
+
+## A quick-look section on a busy form
+
+A one-column section near the top, **Page size** 5, no scope. It answers
+*what changed recently* without leaving the form; *Load more* is there for
+the rest.

@@ -71,16 +71,19 @@ export function resolveBoundColumn(parameter: any): string {
 export function resolveRecord(context: ComponentFramework.Context<IInputs>): { table: string; recordId: string | null } {
     const info = (context.mode as any)?.contextInfo;
     const inputs: any = context.parameters;
-    const candidates: Array<[unknown, unknown]> = [
-        [info?.entityId, info?.entityTypeName],
-        [inputs?.recordId?.raw, inputs?.recordEntity?.raw],
+    // The host's own answer is trusted as it comes; the maker's inputs are
+    // held to a GUID, because a `recordId` bound to the wrong column would
+    // otherwise be sent as a filter.
+    const candidates: Array<[unknown, unknown, RegExp]> = [
+        [info?.entityId, info?.entityTypeName, /^[0-9a-z-]+$/],
+        [inputs?.recordId?.raw, inputs?.recordEntity?.raw, /^[0-9a-f-]{36}$/],
     ];
 
-    for (const [id, table] of candidates) {
+    for (const [id, table, shape] of candidates) {
         const bare = bareId(id);
         const name = typeof table === 'string' ? table.trim().toLowerCase() : '';
 
-        if (bare !== null && /^[0-9a-f-]{36}$/.test(bare) && isLogicalName(name)) {
+        if (bare !== null && shape.test(bare) && isLogicalName(name)) {
             return { table: name, recordId: bare };
         }
     }

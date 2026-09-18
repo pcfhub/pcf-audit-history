@@ -177,7 +177,7 @@
  */
 .AuditHistory .AuditHistory-summary {
     display: grid;
-    grid-template-columns: 16px minmax(96px, 9em) minmax(80px, 10em) minmax(0, 1fr);
+    grid-template-columns: 16px minmax(120px, 11em) minmax(80px, 10em) minmax(0, 1fr);
     align-items: start;
     column-gap: var(--spacingHorizontalS, 8px);
     width: 100%;

@@ -600,6 +600,9 @@ async function sources() {
     check('orgAuditEnabled reads isauditenabled off the organisation row', await P.orgAuditEnabled(ctx.webAPI) === true);
     check('… and is null when the query is refused', await P.orgAuditEnabled({ retrieveMultipleRecords: () => Promise.reject({ message: 'no' }) }) === null);
 
+    const labels = await P.readHost(ctx).columnLabels('account', ['name', 'parentaccountid', 'nosuchcolumn']);
+    check('columnLabels reads DisplayName by name off the item collection and leaves an unknown column out', labels.name === 'Account Name' && labels.parentaccountid === 'Parent Account' && labels.nosuchcolumn === undefined, JSON.stringify(labels));
+
     const live = Ds.createAuditsSource({ webAPI: ctx.webAPI, clientUrl: url, recordId: 'c1', table: 'account', pageSize: 10 });
     const page1 = await live.loadPage(null);
     check('the live source pages the audit table newest first, ten at a time, with a nextLink cursor', page1.rows.length === 10 && page1.rows[0].id === audits[0].auditid && page1.next && page1.next.kind === 'nextLink', JSON.stringify(page1.next));
@@ -854,6 +857,13 @@ async function rigSelfCheck() {
     await fetch(`${dark.page.getClientUrl()}/api/data/v9.2/audits(${first.entities[1].auditid})/Microsoft.Dynamics.CRM.RetrieveAuditDetails`)
         .catch((error) => { offline = error.constructor.name; });
     check('rig: auditStatus 0 is the offline shape, a TypeError', offline === 'TypeError', offline);
+
+    const metadata = await ctx.utils.getEntityMetadata('account', ['name', 'revenue', 'nosuchcolumn']);
+    check(
+        'rig: getEntityMetadata(table, columns).Attributes is an item collection of the columns asked for that the fixture names',
+        metadata.Attributes.get('name').DisplayName === 'Account Name' && metadata.Attributes.getAll().length === 2 && metadata.Attributes.get('nosuchcolumn') === undefined,
+        JSON.stringify(metadata.Attributes.getAll()),
+    );
 
     disposeAll();
 }
