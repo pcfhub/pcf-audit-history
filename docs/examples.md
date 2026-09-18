@@ -24,7 +24,7 @@ underneath — who raised it, from what, when — is the case this exists for.
 Keep **Page size** small here; a column that changes rarely will make the
 control read a few pages looking for it.
 
-::image{src=media/screenshot-scoped.png alt="The control under a Credit Limit column with a chip reading Only Credit Limit and two rows, each opened to show the old limit beside the new" zoom}
+::image{src=media/screenshot-scoped.png alt="The control with a chip reading Only Account Name and three rows, the first opened to show the old name beside the new" zoom}
 
 ## A quick-look section on a busy form
 
