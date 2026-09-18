@@ -209,6 +209,8 @@ the window is 32 wider for the page's padding. Heights are
 | `screenshot.png` | `?width=760` | 792×466 |
 | `screenshot-expanded.png` | `?expand=2,3&width=760` | 792×564 |
 | `screenshot-scoped.png` | `?scope=1&expand=1&width=760` | 792×232 |
+| `screenshot-restore.png` | `?restore=1&expand=2,3&width=760` | 792×580 |
+| `screenshot-restored.png` | `?restore=1&expand=2&restored=1&width=760` — the rig's own audited write, the notice above | 792×563 |
 | `screenshot-dark.png` | `?dark=1&expand=2&width=760` | 792×515 |
 | `screenshot-narrow.png` | `?width=300&expand=2` | 332×855 |
 

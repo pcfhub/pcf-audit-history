@@ -783,7 +783,7 @@ function Values(props: {
                     </Button>
                 </div>
             )}
-            <table className="AuditHistory-table">
+            <table className={`AuditHistory-table${offered ? ' AuditHistory-table--restore' : ''}`}>
                 <thead>
                     <tr>
                         <th scope="col">{strings.columnHeader}</th>

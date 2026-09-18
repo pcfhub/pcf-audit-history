@@ -431,7 +431,25 @@
     margin-bottom: var(--spacingVerticalXS, 4px);
 }
 
-/* The fourth column: one button wide, never wrapping, empty on a line that cannot go back. */
+/*
+ * The fourth column: one button wide, never wrapping, empty on a line that
+ * cannot go back. The table is `table-layout: fixed` for its three text
+ * columns, and under fixed layout a 1% column is 1% — the button overflowed
+ * the row (found on the first screenshot). With the column present the
+ * table lays out by content, so `width: 1%` + nowrap shrink-wraps the
+ * column to its longest label, in any language, and the three text columns
+ * share the rest.
+ */
+.AuditHistory .AuditHistory-table--restore {
+    table-layout: auto;
+}
+
+/* Under auto layout the value columns would size to their content per row; the hints keep rows aligned. */
+.AuditHistory .AuditHistory-table--restore .AuditHistory-old,
+.AuditHistory .AuditHistory-table--restore .AuditHistory-new {
+    width: 30%;
+}
+
 .AuditHistory .AuditHistory-restore-head,
 .AuditHistory .AuditHistory-restore-cell {
     width: 1%;
@@ -456,6 +474,17 @@
     border: 0;
 }
 
+/*
+ * Narrow: the button stays whole — the cell's `overflow-wrap: anywhere`
+ * would otherwise break "Restore" one letter per line (the 300px shot) —
+ * and the name column gives up some width to make room.
+ */
 .AuditHistory--narrow .AuditHistory-restore-cell {
-    white-space: normal;
+    white-space: nowrap;
+    overflow-wrap: normal;
+    padding-inline: 0;
+}
+
+.AuditHistory--narrow .AuditHistory-table--restore tbody th {
+    width: 26%;
 }

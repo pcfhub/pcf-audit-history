@@ -35,6 +35,8 @@
     "screenshots": [
       "media/screenshot.png",
       "media/screenshot-expanded.png",
+      "media/screenshot-restore.png",
+      "media/screenshot-restored.png",
       "media/screenshot-scoped.png",
       "media/screenshot-dark.png",
       "media/screenshot-narrow.png"
