@@ -1,6 +1,6 @@
 {
   "name": "pcf-audit-history",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A record's audit history on the form: who changed what, when, and the old value beside the new.",
   "license": "MIT",
   "private": true,
