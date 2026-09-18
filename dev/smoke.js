@@ -297,387 +297,441 @@ if (typeof registration.ctor !== 'function') {
 }
 
 /* ======================================================================== *
- *  WORKED EXAMPLE — replace everything below with assertions about your own
- *  control. It exercises the scaffolded field control, whose whole job is to
- *  render one text input and honour the states a form puts it in.
+ *  AUDIT HISTORY — what the control decides, asserted two ways.
  *
- *  It comes in two halves because the scaffolded control does. A **standard**
- *  control writes into the container it was handed, so the assertions read the
- *  DOM it built. A **virtual** one returns an element, so they read the props
- *  it passed down — which is the better test of the two: the props are the
- *  control's decisions, where the DOM is one rendering of them.
+ *  The **pure modules** (`audit/`, `state/`, `sample/`, `data/`, `platform.ts`)
+ *  are transpiled straight from source and driven directly: the exact query
+ *  a server would receive, every row and detail shape reduced, every reducer
+ *  transition, the live source against the rig's Web API and its fetch stub.
+ *  The **bundle** is mounted through `mount()` and read through the props it
+ *  hands the component, which are its decisions about the host: which of the
+ *  six modes, what key the list is built from, what scope.
  *
- *  Keep the half that matches your control and delete the other. What follows
- *  both halves applies either way.
+ *  What neither can prove: that a real form's audit rows carry formatted
+ *  values, that the PCF Web API follows its own nextLink, or what a cleared
+ *  column looks like in an AuditDetail — SPEC.md's P2, P3 and P5, and every
+ *  other row of its *Measured* table.
  * ======================================================================== */
 
-const plain = mount({});
+const ts = require(path.join(root, 'node_modules', 'typescript'));
 
-if (plain.element !== undefined) {
-    /* ------------------------------------------------- a virtual control */
+/**
+ * Render an element all the way down with `react-dom/server`, which needs no
+ * DOM. Fluent is the stand-in, so a component renders as
+ * `<div data-fluent="Name">`; the assertions are about what the control put
+ * in the markup, never about Fluent. Effects do not run here, so this reaches
+ * the synchronous states only — the tree after loading is rendered through
+ * `TreeRow` from reducer state below.
+ */
+function renderDeep(element) {
+    if (element === undefined || element === null || React === null) {
+        return null;
+    }
 
-    check(
-        'hands the component the value the platform supplied',
-        plain.props().value === 'Contoso Ltd',
-        JSON.stringify(plain.props().value),
-    );
+    const server = require(path.join(root, 'node_modules', 'react-dom', 'server'));
+    const warn = console.error;
+    console.error = () => {};
 
-    /*
-     * The information bug. A user denied read access gets `raw === null`, which
-     * is indistinguishable from an empty column unless `security.readable` is
-     * checked — so an unchecked control renders "no value" where the truth is
-     * "not allowed to see it".
-     */
-    const denied = mount({ security: 'no-access', value: null });
+    try {
+        return server.renderToStaticMarkup(element);
+    } finally {
+        console.error = warn;
+    }
+}
+const { Module } = require('module');
+const src = path.join(root, 'AuditHistory');
 
-    check('a column the user cannot read is marked unreadable', denied.props().readable === false);
+/**
+ * Transpile one source file and evaluate it as its own module. Relative
+ * imports come back through here; `react` is the React the bundle got;
+ * `@fluentui/react-components` is the same stand-in Proxy the bundle got, so a
+ * transpiled component renders to `<div data-fluent="Name">` too.
+ */
+const moduleCache = new Map();
 
-    check(
-        'and the message it will show comes from the .resx, not from the source',
-        denied.props().noAccessText === 'resx:AuditHistory_NoAccess',
-        denied.props().noAccessText,
-    );
+function load(name) {
+    if (moduleCache.has(name)) {
+        return moduleCache.get(name).exports;
+    }
 
-    /*
-     * Two independent reasons to be read-only, and conflating them is a real
-     * bug: the form's `isControlDisabled` and the column's `security.editable`.
-     * This asserts the second on a form that is otherwise editable.
-     */
-    check(
-        'a read-only column disables the control on an editable form',
-        mount({ security: 'read-only' }).props().disabled === true,
-    );
+    const file = path.join(src, `${name}.ts${fs.existsSync(path.join(src, `${name}.tsx`)) ? 'x' : ''}`);
+    const source = fs.readFileSync(file, 'utf8');
+    const { outputText, diagnostics } = ts.transpileModule(source, {
+        fileName: file,
+        compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2019, esModuleInterop: true, jsx: ts.JsxEmit.React },
+        reportDiagnostics: true,
+    });
 
-    /*
-     * A column with no profile arrives as an *object* with `secured: false` on
-     * a real form (measured 2026-09-13), and `undefined` on other hosts. A read
-     * of `security.readable` as a boolean is right on both — and wrong on the
-     * third shape, an unmapped optional bound property's `{}`. Only an
-     * explicit `false` is a denial.
-     */
-    check(
-        'an unsecured column reported as an object, not undefined, is readable and editable',
-        mount({ security: 'unsecured' }).props().readable === true
-            && mount({ security: 'unsecured' }).props().disabled === false,
-    );
+    if (diagnostics && diagnostics.length > 0) {
+        throw new Error(`${name}: ${diagnostics.map((d) => ts.flattenDiagnosticMessageText(d.messageText, '\n')).join('\n')}`);
+    }
 
-    /*
-     * The platform's own validation. A failing business rule is silent inside a
-     * code component unless the control passes it on.
-     */
-    check(
-        'a validation error reaches the component',
-        mount({ error: true }).props().errorMessage === host.DEFAULTS.errorMessage,
-        mount({ error: true }).props().errorMessage,
-    );
+    const mod = new Module(file, module);
+    mod.filename = file;
+    mod.paths = Module._nodeModulePaths(src);
+    moduleCache.set(name, mod);
+    mod.require = function (request) {
+        if (request.startsWith('.')) {
+            return load(path.posix.normalize(path.posix.join(path.posix.dirname(name), request)));
+        }
+        if (request === 'react') {
+            return React;
+        }
+        if (request === '@fluentui/react-components') {
+            return fluent;
+        }
+        return Module.prototype.require.call(this, request);
+    };
+    mod._compile(outputText, file);
 
-    check('and there is none to show when the platform reported none', plain.props().errorMessage === null);
-
-    /*
-     * The canvas/model-driven split, which is what every `?.` in the control is
-     * about. A canvas app publishes no column metadata, and a control that
-     * requires it breaks on a host half its users are on.
-     */
-    check(
-        'does not invent a maxLength on a host that publishes no column metadata',
-        mount({ host: 'canvas' }).props().maxLength === undefined,
-        String(mount({ host: 'canvas' }).props().maxLength),
-    );
-
-    /*
-     * The accessible name comes from the maker's label for this field, not from
-     * the .resx — the resource string cannot know what the field is called on
-     * this form, so it is the fallback rather than the default.
-     */
-    check("passes down the form's own label", plain.props().label === 'Account name');
-
-    check('and a fallback for a form that gives none', plain.props().fallbackLabel === 'resx:AuditHistory_Name');
-
-    // The edit path: the component reports a change, the control notifies, and
-    // what it hands back is what the platform writes to the column.
-    const edited = mount({});
-
-    edited.props().onChange('Fabrikam');
-
-    check('an edit notifies the platform exactly once', edited.notifications() === 1);
-
-    check(
-        'and getOutputs hands back what was typed',
-        edited.outputs().value === 'Fabrikam',
-        JSON.stringify(edited.outputs()),
-    );
-} else {
-    /* ------------------------------------------------ a standard control */
-
-    check(
-        'renders an input inside the field surface',
-        Boolean(plain.find('.AuditHistory-field')) && Boolean(plain.find('input')),
-    );
-
-    check(
-        'shows the value the platform supplied',
-        plain.find('input') && plain.find('input').value === 'Contoso Ltd',
-        plain.find('input') && plain.find('input').value,
-    );
-
-    /*
-     * The accessible name comes from the maker's label for this field, not from
-     * the .resx — the resource string cannot know what the field is called on
-     * this form, so it is the fallback rather than the default.
-     */
-    check(
-        "the input's accessible name is the form's own label",
-        plain.find('input') && plain.find('input').getAttribute('aria-label') === 'Account name',
-        plain.find('input') && plain.find('input').getAttribute('aria-label'),
-    );
-
-    check(
-        'and falls back to the .resx when the form gives no label',
-        mount({ label: '' }).find('input').getAttribute('aria-label') === 'resx:AuditHistory_Name',
-    );
-
-    /*
-     * The information bug. A user denied read access gets `raw === null`, which
-     * is indistinguishable from an empty column unless `security.readable` is
-     * checked — so an unchecked control renders "no value" where the truth is
-     * "not allowed to see it".
-     */
-    const denied = mount({ security: 'no-access', value: null });
-
-    check(
-        'a column the user cannot read says so rather than rendering as empty',
-        denied.find('.AuditHistory-message')
-            && denied.find('.AuditHistory-message').textContent === 'resx:AuditHistory_NoAccess',
-        denied.find('.AuditHistory-message') && denied.find('.AuditHistory-message').textContent,
-    );
-
-    check(
-        'and hides the field surface rather than leaving an empty box above the message',
-        denied.find('.AuditHistory-field') && denied.find('.AuditHistory-field').hidden === true,
-    );
-
-    /*
-     * Two independent reasons to be read-only, and conflating them is a real
-     * bug: the form's `isControlDisabled` and the column's `security.editable`.
-     */
-    check(
-        'a read-only column disables the input on an editable form',
-        mount({ security: 'read-only' }).find('input').disabled === true,
-    );
-
-    // The same three shapes — see the virtual half above.
-    check(
-        'an unsecured column reported as an object, not undefined, renders the field enabled',
-        mount({ security: 'unsecured' }).find('.AuditHistory-field').hidden === false
-            && mount({ security: 'unsecured' }).find('input').disabled === false,
-    );
-
-    check(
-        'and the disabled state reaches the surface, not just the input',
-        mount({ security: 'read-only' }).container.classList.contains('AuditHistory--disabled'),
-    );
-
-    /*
-     * The platform's own validation. A failing business rule is silent inside a
-     * code component unless the control gives it somewhere to go.
-     */
-    const invalid = mount({ error: true });
-
-    check(
-        'a validation error is shown to the user',
-        invalid.find('.AuditHistory-message')
-            && invalid.find('.AuditHistory-message').textContent === host.DEFAULTS.errorMessage,
-        invalid.find('.AuditHistory-message') && invalid.find('.AuditHistory-message').textContent,
-    );
-
-    check(
-        'and is announced rather than only coloured',
-        invalid.find('input') && invalid.find('input').getAttribute('aria-invalid') === 'true',
-    );
-
-    /*
-     * The canvas/model-driven split, which is what every `?.` in the control is
-     * about. A canvas app publishes no column metadata and no theme.
-     */
-    const canvas = mount({ host: 'canvas' });
-
-    check('renders on a host that publishes no column metadata', Boolean(canvas.find('input')));
-
-    check(
-        'does not invent a maxLength the host never supplied',
-        canvas.find('input') && !canvas.find('input').maxLength,
-        canvas.find('input') && String(canvas.find('input').maxLength),
-    );
-
-    check(
-        'takes no position on the theme when the host publishes none',
-        !canvas.container.classList.contains('AuditHistory--dark'),
-        canvas.container.className,
-    );
-
-    check(
-        'and follows the host theme where there is one',
-        mount({ host: 'model-driven', dark: true }).container.classList.contains('AuditHistory--dark'),
-    );
-
-    /*
-     * The edit path, end to end: the user types, the control notifies, and what
-     * it hands back is what the platform will write to the column.
-     */
-    const edited = mount({});
-    const input = edited.find('input');
-
-    input.value = 'Fabrikam';
-    input.dispatchEvent({ type: 'input', target: input });
-
-    check('typing notifies the platform exactly once', edited.notifications() === 1, String(edited.notifications()));
-
-    check(
-        'and getOutputs hands back what was typed',
-        edited.outputs().value === 'Fabrikam',
-        JSON.stringify(edited.outputs()),
-    );
-
-    /*
-     * `updateView` runs on every change to any bound value, including ones this
-     * control caused itself — so a control that writes the input unconditionally
-     * moves the caret to the end of the field on every keystroke. The guard is
-     * invisible in a rendered form and visible here: a render that changes
-     * nothing must not touch the value the user is holding.
-     */
-    const typing = mount({});
-    const held = typing.find('input');
-
-    held.value = 'Half-typed';
-    typing.update({});
-
-    check(
-        'a re-render with an unchanged value leaves what the user is typing alone',
-        held.value === 'Half-typed',
-        held.value,
-    );
+    return mod.exports;
 }
 
-/* ------------------------------------------------------------ either shape */
+const Rw = load('audit/rows');
+const A = load('audit/actions');
+const Df = load('audit/diff');
+const Qy = load('audit/query');
+const St = load('state/reducer');
+const Em = load('state/emptyState');
+const Sp = load('sample/parseSampleData');
+const Ds = load('data/AuditSource');
+const P = load('platform');
+const Cm = load('components/AuditHistoryControl');
 
-/*
- * **`null` is not `undefined`, and this is the assertion worth keeping when the
- * rest of the example goes.**
- *
- * The generated `IOutputs` types every bound value as optional, so
- * `this.value ?? undefined` type-checks cleanly and means the opposite of what
- * a clear needs: `undefined` is "no change". A canvas app honours that strictly
- * and the field simply refuses to empty, while a model-driven form is more
- * forgiving — so the bug hides on the host most people test first.
- * `pcf-star-rating` shipped exactly this and its clear button did nothing.
- */
-const cleared = mount({ value: null });
+const audits = fixture.tables.audit;
+const detailOf = (n) => fixture.audits.details[audits[n - 1].auditid];
+const RECORD = { entityId: '{C1C1C1C1-0000-0000-0000-000000000001}', entityTypeName: 'account' };
+const G1 = 'c1c1c1c1-0000-0000-0000-000000000001';
 
-check(
-    'a cleared column produces an output the platform can act on, not "no change"',
-    cleared.outputs().value !== undefined,
-    `getOutputs() returned ${JSON.stringify(cleared.outputs())}`,
-);
+/* --------------------------------------------------------------- the rows */
 
-/*
- * The resize contract, which is a pair and fails silently when half of it is
- * missing.
- *
- * `mode.allocatedWidth` is `-1` until the control calls
- * `mode.trackContainerResize(true)`, so a control that reflows on width without
- * asking lays out against -1 on every host and always picks its narrowest
- * branch. The scaffolded control reflows on neither, so all this can honestly
- * assert is that a narrow phone-sized container does not break it; the detail
- * line reports whether the control asked, which is the interesting half.
- *
- * **The moment your control reads `allocatedWidth` or `getFormFactor`, replace
- * this with the pair** — that it called `trackContainerResize(true)`, and that
- * it lays out differently at 320 than at 1200. `getFormFactor` is 0 unknown,
- * 1 desktop, 2 tablet, 3 phone: web is 1, and 3 is a phone, which is the
- * comparison people get backwards.
- */
-const sized = mount({ width: 320, formFactor: 'phone' });
+const first = Rw.toRow(audits[0]);
 
 check(
-    'renders in a phone-sized container',
-    sized.element !== undefined ? sized.element !== null : Boolean(sized.find('input')),
-    `trackContainerResize: ${sized.calls().some((call) => call.indexOf('trackContainerResize') === 0) ? 'called' : 'never called'}`,
+    'a row keeps the id, the instant, the platform\'s formatting, the user and the action',
+    first.id === audits[0].auditid && first.when === '2026-09-18T14:05:00Z' && first.whenText === '9/18/2026 2:05 PM'
+        && first.who === 'Alex Chen' && first.whoId === fixture.users.alex.id && first.action === 2 && first.actionText === 'Update',
+    JSON.stringify(first),
 );
+check('a row without an auditid is not a row', Rw.toRow({ createdon: 'x' }) === null && Rw.toRows([{}, audits[0]]).length === 1);
+check('a row with nothing formatted degrades to empty strings, not undefined', (() => {
+    const bare = Rw.toRow({ auditid: 'A0', action: '13' });
+    return bare.when === '' && bare.whenText === '' && bare.who === '' && bare.whoId === null && bare.action === 13 && bare.actionText === '';
+})());
 
-/*
- * Hidden is a state, not an absence. Canvas relies on `mode.isVisible` — a
- * model-driven form hides the section itself — and a control that ignores it
- * stays on screen in a canvas app that asked for it to go.
- */
+/* ------------------------------------------------------------ the actions */
+
+check('the platform\'s own label wins over the table', A.actionLabel(2, 'Aktualisiert', marked) === 'Aktualisiert');
+check('a known code without a label reads from the .resx', A.actionLabel(41, '', marked) === 'resx:AuditHistory_ActionSetState' && A.actionLabel(14, '', marked) === 'resx:AuditHistory_ActionShare');
+check('an unknown code names itself rather than going blank', A.actionLabel(77, '', (k) => (k === 'AuditHistory_ActionOther' ? 'Action {0}' : k)) === 'Action 77');
+
+/* ------------------------------------------------------------- the differ */
+
+const setLookup = Df.diffDetail({ AuditDetail: detailOf(2) });
 check(
-    'renders nothing visible when the host says it is hidden',
-    (() => {
-        const hidden = mount({ visible: false });
-
-        return hidden.element !== undefined
-            ? hidden.props().visible === false
-            : hidden.container.classList.contains('AuditHistory--hidden');
-    })(),
+    'a lookup set: one change, the column folded from _x_value, the formatted name as the text',
+    setLookup.kind === 'attributes' && setLookup.changes.length === 1
+        && setLookup.changes[0].column === 'parentaccountid' && setLookup.changes[0].kind === 'set'
+        && setLookup.changes[0].oldText === '' && setLookup.changes[0].newText === 'Contoso Europe',
+    JSON.stringify(setLookup),
 );
+const cleared = Df.diffDetail(detailOf(3));
+check(
+    'a column cleared: absent from NewValue and named in DeletedAttributes → cleared, the old text kept',
+    cleared.changes.length === 1 && cleared.changes[0].kind === 'cleared' && cleared.changes[0].oldText === 'https://www.contoso.de' && cleared.changes[0].newText === '',
+    JSON.stringify(cleared),
+);
+check(
+    'a column present as null in NewValue is cleared too',
+    Df.diffAttributes({ name: 'A' }, { name: null }, [])[0].kind === 'cleared',
+);
+const choice = Df.diffDetail(detailOf(4));
+check('a choice shows its labels, not its integers', choice.changes[0].oldText === 'Accounting' && choice.changes[0].newText === 'Business Services' && choice.changes[0].kind === 'changed');
+const capped = Df.diffDetail(detailOf(5));
+check('a value at the 5 KB cap is flagged', capped.changes[0].truncated === true && Df.isTruncated('short…') === false);
+const two = Df.diffDetail(detailOf(6));
+check('two columns in one change are two lines, in NewValue\'s order', two.changes.map((c) => c.column).join(',') === 'statecode,statuscode');
+const created = Df.diffDetail(detailOf(26));
+check('a Create is every column as set', created.changes.length === 4 && created.changes.every((c) => c.kind === 'set'));
+const share = Df.diffDetail(detailOf(8));
+check('a Share is its own kind, with the principal and the privileges', share.kind === 'share' && share.principal === 'Alex Chen' && share.newPrivileges === 'ReadAccess, WriteAccess');
+const rel = Df.diffDetail(detailOf(9));
+check('a Relationship is its own kind, with the name and the targets', rel.kind === 'relationship' && rel.name === 'accountleads_association' && rel.targets[0] === 'Nina Vogel');
+check('an unknown detail type is named, not rendered as an empty change', Df.diffDetail({ '@odata.type': '#Microsoft.Dynamics.CRM.UserAccessAuditDetail', AccessTime: 'x' }).kind === 'other');
+check('the same text on both sides is not a change', Df.diffAttributes({ name: 'A' }, { name: 'A' }, []).length === 0);
+check('annotation keys never become columns', Df.diffAttributes({}, { '_ownerid_value@Microsoft.Dynamics.CRM.lookuplogicalname': 'team', _ownerid_value: 'x' }, []).map((c) => c.column).join() === 'ownerid');
+check('columnsOf reads an attributes detail and nothing else', Df.columnsOf(two).join() === 'statecode,statuscode' && Df.columnsOf(share).length === 0);
 
-/* ---------------------------------------------------- what destroy owes */
+/* ------------------------------------------------------------ the queries */
+
+check('pageSize is clamped: blank → 20, 0 → 1, 500 → 100, 7.9 → 7', Qy.clampPageSize(null) === 20 && Qy.clampPageSize(0) === 1 && Qy.clampPageSize(500) === 100 && Qy.clampPageSize(7.9) === 7 && Qy.clampPageSize('x') === 20);
+check(
+    'the audits query is the documented spelling, newest first, filtered on _objectid_value',
+    Qy.auditsQuery(G1) === `?$select=auditid,createdon,action,operation,_userid_value&$filter=_objectid_value eq ${G1}&$orderby=createdon desc`,
+    Qy.auditsQuery(G1),
+);
+check('a keyset window narrows on createdon', Qy.auditsQuery(G1, '2026-09-01T00:00:00Z').includes(' and createdon lt 2026-09-01T00:00:00Z&'));
+check('the bound function hangs off the audit row', Qy.detailsPath('a1') === 'audits(a1)/Microsoft.Dynamics.CRM.RetrieveAuditDetails');
+check('the unbound function carries its arguments as encoded @-aliases', decodeURIComponent(Qy.changeHistoryPath('accounts', G1, 2, 10)) === `RetrieveRecordChangeHistory(Target=@t,PagingInfo=@p)?@t={'@odata.id':'accounts(${G1})'}&@p={"PageNumber":2,"Count":10,"ReturnTotalRecordCount":true}`);
+check('the table definition path selects IsAuditEnabled', Qy.tableDefinitionPath('account') === "EntityDefinitions(LogicalName='account')?$select=IsAuditEnabled");
+
+/* ------------------------------------------------------------ the reducer */
+
+const rows = Rw.toRows(audits.slice(0, 3));
+let s = St.reduce(St.initialState, { type: 'pageRequested' });
+check('the first request is "first" and marks the list started', s.loading === 'first' && s.started === true && St.initialState.started === false);
+s = St.reduce(s, { type: 'pageLoaded', page: { rows, next: { kind: 'nextLink', url: 'u' }, total: null }, auto: false });
+check('a page appends its rows and keeps the cursor', s.rows.length === 3 && s.cursor.url === 'u' && s.loading === null);
+s = St.reduce(St.reduce(s, { type: 'pageRequested' }), { type: 'pageLoaded', page: { rows: [rows[2], Rw.toRow(audits[3])], next: null, total: 26 }, auto: true });
+check('a second page dedupes by id, counts an automatic page, and takes the total', s.rows.length === 4 && s.autoPages === 1 && s.total === 26 && s.cursor === null);
+check('the later request was "more"', St.reduce(s, { type: 'pageRequested' }).loading === 'more');
+check('pendingDetails lists every row without values', St.pendingDetails(s).length === 4);
+s = St.reduce(s, { type: 'detailRequested', ids: St.pendingDetails(s) });
+check('requested details are loading and no longer pending', St.pendingDetails(s).length === 0 && s.details[rows[0].id].status === 'loading');
+s = St.reduce(s, { type: 'detailLoaded', id: rows[0].id, detail: Df.diffDetail(detailOf(1)) });
+s = St.reduce(s, { type: 'detailLoaded', id: rows[1].id, detail: Df.diffDetail(detailOf(2)) });
+s = St.reduce(s, { type: 'detailFailed', id: rows[2].id, fault: { message: 'no', privilege: true } });
+check('columnsSeen is every loaded column, first seen first', St.columnsSeen(s).join() === 'name,parentaccountid');
+check('no scope shows every row', St.visibleRows(s, null).length === 4);
+check(
+    'a scope hides rows still loading, keeps a failed one, and filters loaded ones by column',
+    St.visibleRows(s, 'parentaccountid').map((r) => r.id).join() === [rows[1].id, rows[2].id].join(),
+    JSON.stringify(St.visibleRows(s, 'parentaccountid').map((r) => r.id)),
+);
+check('detailsSettled waits for the last one', St.detailsSettled(s) === false && St.detailsSettled(St.reduce(s, { type: 'detailLoaded', id: audits[3].auditid, detail: Df.diffDetail(detailOf(4)) })) === true);
+const settled = St.reduce(s, { type: 'detailLoaded', id: audits[3].auditid, detail: Df.diffDetail(detailOf(4)) });
+check('needsAutoContinue: nothing visible, a cursor, settled → yes; no cursor → no', (() => {
+    // A failed detail is always visible, so the failed row is given values first.
+    const allLoaded = { ...settled, details: { ...settled.details, [rows[2].id]: { status: 'loaded', detail: Df.diffDetail(detailOf(1)) } } };
+    const withCursor = { ...allLoaded, cursor: { kind: 'nextLink', url: 'u' } };
+    return St.needsAutoContinue(withCursor, 'websiteurl') === true
+        && St.needsAutoContinue(allLoaded, 'websiteurl') === false
+        && St.needsAutoContinue({ ...withCursor, details: settled.details }, 'websiteurl') === false
+        && St.needsAutoContinue(withCursor, null) === false
+        && St.needsAutoContinue({ ...withCursor, autoPages: 5 }, 'websiteurl') === false
+        && St.needsAutoContinue(withCursor, 'name') === false;
+})());
+s = St.reduce(s, { type: 'toggle', id: rows[0].id });
+check('toggle opens, and again closes', s.expanded[rows[0].id] === true && St.reduce(s, { type: 'toggle', id: rows[0].id }).expanded[rows[0].id] === undefined);
+check('setFilter resets the automatic page count', St.reduce({ ...s, autoPages: 3 }, { type: 'setFilter', column: 'name' }).autoPages === 0);
+check('a failed first page keeps the fault', St.reduce(St.initialState, { type: 'pageFailed', fault: { message: 'm', privilege: false } }).error.message === 'm');
+check('reset is the initial state', St.reduce(s, { type: 'reset' }) === St.initialState);
+
+/* -------------------------------------------------------- the empty state */
+
+const on = { org: true, table: true };
+check('a privilege refusal before anything else', Em.resolveEmpty({ outcome: 'privilege', rowCount: 0, visibleCount: 0, scoped: false, enabled: { org: false, table: false } }) === 'no-privilege');
+check('an error before the switches', Em.resolveEmpty({ outcome: 'error', rowCount: 0, visibleCount: 0, scoped: false, enabled: { org: false, table: false } }) === 'error');
+check('the organisation before the table', Em.resolveEmpty({ outcome: 'ok', rowCount: 0, visibleCount: 0, scoped: false, enabled: { org: false, table: false } }) === 'audit-off-org');
+check('the table before "no changes"', Em.resolveEmpty({ outcome: 'ok', rowCount: 0, visibleCount: 0, scoped: false, enabled: { org: true, table: false } }) === 'audit-off-table');
+check('an unknown switch is "no changes", never a guess', Em.resolveEmpty({ outcome: 'ok', rowCount: 0, visibleCount: 0, scoped: false, enabled: { org: null, table: null } }) === 'no-changes');
+check('rows exist but the scope hides them: the column sentence, not the switch', Em.resolveEmpty({ outcome: 'ok', rowCount: 5, visibleCount: 0, scoped: true, enabled: { org: false, table: false } }) === 'no-changes-for-column');
+check('anything visible is not empty', Em.resolveEmpty({ outcome: 'ok', rowCount: 5, visibleCount: 1, scoped: true, enabled: on }) === null);
+
+/* --------------------------------------------------------------- the sample */
+
+const sampleDoc = {
+    table: 'account', column: 'name', auditing: { org: true, table: false }, labels: { name: 'Account Name' },
+    changes: [
+        { id: 'S1', when: '2026-09-18T14:05:00Z', who: 'Alex Chen', action: 2, changes: [{ column: 'name', old: 'A', new: 'B' }, { column: 'BAD COLUMN', old: 1, new: 2 }] },
+        { id: 's1', when: '…', who: 'dup', action: 2, changes: [] },
+        { when: '2026-09-17T10:00:00Z', who: 'Priya Raman', action: 14, share: { principal: 'Alex Chen', old: 'None', new: 'ReadAccess' } },
+        { id: 's3', when: '2026-09-16T10:00:00Z', action: 1, changes: [{ column: 'name', new: 'A' }] },
+    ],
+};
+const sample = Sp.parseSampleData(JSON.stringify(sampleDoc));
+check('a blank sample is undefined and a bad one is null', Sp.parseSampleData('') === undefined && Sp.parseSampleData('  ') === undefined && Sp.parseSampleData('{nope') === null && Sp.parseSampleData('{"changes":1}') === null);
+check(
+    'the sample yields rows and details, ids lower-cased and deduped, a missing id generated',
+    sample.rows.length === 3 && sample.rows[0].id === 's1' && sample.rows[1].id === 'sample-3' && sample.rows[2].id === 's3' && sample.rows[0].who === 'Alex Chen',
+    JSON.stringify(sample.rows.map((r) => r.id)),
+);
+check('a bad column name in the sample is dropped, a good one kept', sample.details.s1.changes.length === 1 && sample.details.s1.changes[0].kind === 'changed');
+check('the sample carries the auditing switches, the column and the labels', sample.auditing.table === false && sample.column === 'name' && sample.labels.name === 'Account Name');
+check('a share in the sample is a share', sample.details['sample-3'].kind === 'share' && sample.details['sample-3'].principal === 'Alex Chen');
+check('a set in the sample is a set', sample.details.s3.changes[0].kind === 'set');
+check('the sample is capped', Sp.parseSampleData(JSON.stringify({ changes: Array.from({ length: 600 }, (_, i) => ({ id: `r${i}`, action: 2 })) })).rows.length === Sp.SAMPLE_MAX);
+
+/* ------------------------------------------------------------- the platform */
+
+const ctxWith = (options) => host.createContext({ getString: marked, fixture, ...options });
+check('the record comes from contextInfo, bare and lower-case', (() => {
+    const r = P.resolveRecord(ctxWith({ contextInfo: RECORD }));
+    return r.recordId === G1 && r.table === 'account';
+})());
+check('without contextInfo the two inputs stand in, validated', (() => {
+    const good = P.resolveRecord(ctxWith({ inputs: { recordId: `{${G1.toUpperCase()}}`, recordEntity: ' Account ' } }));
+    const badId = P.resolveRecord(ctxWith({ inputs: { recordId: 'not-a-guid', recordEntity: 'account' } }));
+    const badTable = P.resolveRecord(ctxWith({ inputs: { recordId: G1, recordEntity: 'Account Name' } }));
+    return good.recordId === G1 && good.table === 'account' && badId.recordId === null && badId.table === 'account' && badTable.recordId === null;
+})());
+check('contextInfo wins over the inputs', P.resolveRecord(ctxWith({ contextInfo: RECORD, inputs: { recordId: 'ffffffff-0000-0000-0000-000000000000', recordEntity: 'contact' } })).recordId === G1);
+check('the bound column is read off attributes.LogicalName, or is empty on canvas', P.resolveBoundColumn({ attributes: { LogicalName: 'Name' } }) === 'name' && P.resolveBoundColumn({}) === '');
+check('the client URL comes from page.getClientUrl, and is null without it', (() => {
+    const url = host.nextClientUrl();
+    return P.lookupClientUrl(ctxWith({ clientUrl: url })) === url && P.lookupClientUrl(ctxWith({ page: false })) === null;
+})());
+const reading = P.readHost(ctxWith({ contextInfo: RECORD, inputs: { columnScope: true, pageSize: 7, sampleData: '' } }));
+check('readHost folds everything the control reads', reading.webAPI !== null && reading.table === 'account' && reading.recordId === G1 && reading.column === 'name' && reading.columnScope === true && reading.pageSize === 7 && reading.sampleData === '' && reading.readable === true && typeof reading.columnLabels === 'function');
+check('readHost withholds what the host withholds', (() => {
+    const bare = P.readHost(ctxWith({ webAPI: false, utils: false, security: 'no-access', host: 'canvas' }));
+    return bare.webAPI === null && bare.columnLabels === null && bare.readable === false && bare.column === '';
+})());
+
+/* ---- the fetch helper and the sources, against the rig (asynchronous) ---- */
+
+async function sources() {
+    const url = host.nextClientUrl();
+    const ctx = ctxWith({ clientUrl: url, contextInfo: RECORD });
+
+    const plain = await P.fetchJson(url, Qy.detailsPath(audits[1].auditid), true);
+    check('fetchJson resolves on a 200 with the body', plain.ok === true && plain.status === 200 && plain.body.AuditDetail !== undefined);
+    const missing = await P.fetchJson(url, Qy.detailsPath('00000000-0000-0000-0000-0000000000ff'), false);
+    check('fetchJson resolves on a 404 too — a refusal is an answer, not an exception', missing.ok === false && missing.status === 404 && missing.body.error !== undefined);
+    let offline = 'resolved';
+    await P.fetchJson(`${host.nextClientUrl()}`, 'x', false).catch((e) => { offline = e.constructor.name; });
+    check('and rejects only when there is no response', offline === 'Error' || offline === 'TypeError', offline);
+
+    check('tableAuditEnabled reads the managed property\'s Value', await P.tableAuditEnabled(url, 'account') === true);
+    const offUrl = host.nextClientUrl();
+    ctxWith({ clientUrl: offUrl, auditEnabled: { org: false, table: false } });
+    check('… and follows the switch', await P.tableAuditEnabled(offUrl, 'account') === false);
+    check('… and is null for a table the organisation does not have', await P.tableAuditEnabled(url, 'nosuchtable') === null);
+    check('orgAuditEnabled reads isauditenabled off the organisation row', await P.orgAuditEnabled(ctx.webAPI) === true);
+    check('… and is null when the query is refused', await P.orgAuditEnabled({ retrieveMultipleRecords: () => Promise.reject({ message: 'no' }) }) === null);
+
+    const live = Ds.createAuditsSource({ webAPI: ctx.webAPI, clientUrl: url, recordId: 'c1', table: 'account', pageSize: 10 });
+    const page1 = await live.loadPage(null);
+    check('the live source pages the audit table newest first, ten at a time, with a nextLink cursor', page1.rows.length === 10 && page1.rows[0].id === audits[0].auditid && page1.next && page1.next.kind === 'nextLink', JSON.stringify(page1.next));
+    const page2 = await live.loadPage(page1.next);
+    const page3 = await live.loadPage(page2.next);
+    check('… and hands the link back as options for the next page, to the end', page2.rows.length === 10 && page2.rows[0].id === audits[10].auditid && page3.rows.length === 6 && page3.next === null);
+    const detail = await live.loadDetail(audits[1].auditid);
+    check('the live source reads a row\'s values through the bound function', detail.kind === 'attributes' && detail.changes[0].column === 'parentaccountid');
+    let fault = null;
+    await live.loadDetail('00000000-0000-0000-0000-0000000000ff').catch((e) => { fault = e; });
+    check('a missing row is a fault with the server\'s sentence, not a privilege one', fault && fault.privilege === false && /Does Not Exist/.test(fault.message), JSON.stringify(fault));
+    check('probeEnabled asks both switches', JSON.stringify(await live.probeEnabled()) === '{"org":true,"table":true}');
+
+    const noUrl = Ds.createAuditsSource({ webAPI: ctx.webAPI, clientUrl: null, recordId: 'c1', table: 'account', pageSize: 10 });
+    fault = null;
+    await noUrl.loadDetail(audits[1].auditid).catch((e) => { fault = e; });
+    check('without an organisation URL the rows still load and the values are a named fault', (await noUrl.loadPage(null)).rows.length === 10 && fault && fault.privilege === false);
+    check('… and the table switch is unknown rather than off', (await noUrl.probeEnabled()).table === null);
+
+    const refusedUrl = host.nextClientUrl();
+    const refusedCtx = ctxWith({ clientUrl: refusedUrl, auditStatus: 403, auditSummary: false });
+    const refused = Ds.createAuditsSource({ webAPI: refusedCtx.webAPI, clientUrl: refusedUrl, recordId: 'c1', table: 'account', pageSize: 10 });
+    fault = null;
+    await refused.loadPage(null).catch((e) => { fault = e; });
+    check('a user without prvReadAuditSummary: the page is a privilege fault', fault && fault.privilege === true, JSON.stringify(fault));
+    fault = null;
+    await refused.loadDetail(audits[1].auditid).catch((e) => { fault = e; });
+    check('a user without prvReadRecordAuditHistory: the values are a privilege fault, from the 403', fault && fault.privilege === true, JSON.stringify(fault));
+
+    const darkUrl = host.nextClientUrl();
+    const darkCtx = ctxWith({ clientUrl: darkUrl, auditStatus: 0 });
+    const dark = Ds.createAuditsSource({ webAPI: darkCtx.webAPI, clientUrl: darkUrl, recordId: 'c1', table: 'account', pageSize: 10 });
+    fault = null;
+    await dark.loadDetail(audits[1].auditid).catch((e) => { fault = e; });
+    check('offline: the values are a plain fault, not a privilege one', fault && fault.privilege === false && typeof fault.message === 'string');
+
+    const sampled = Ds.createSampleSource(sample, 2);
+    const s1 = await sampled.loadPage(null);
+    const s2 = await sampled.loadPage(s1.next);
+    check('the sample source pages the sample and knows its total', s1.rows.length === 2 && s1.total === 3 && s2.rows.length === 1 && s2.next === null);
+    check('… and answers values and the switches from the document', (await sampled.loadDetail('s1')).kind === 'attributes' && (await sampled.probeEnabled()).table === false);
+
+    check('isPrivilegeFault reads the code or the message', Ds.isPrivilegeFault({ errorCode: 2147746336, message: 'x' }) && Ds.isPrivilegeFault({ message: 'Principal user is missing prvReadAuditSummary privilege.' }) && !Ds.isPrivilegeFault({ message: 'Record Is Unavailable.' }));
+}
+
+/* --------------------------------------------- the bundle: the mode ladder */
+
+const bound = mount({ contextInfo: RECORD });
+check('a saved record with a Web API is live, keyed on the record', bound.props().mode === 'live' && bound.props().sourceKey.startsWith(`live|account|${G1}|`), bound.props().sourceKey);
+check('the scope is off unless columnScope is on', bound.props().scope === null && bound.update({ inputs: { columnScope: true } }).props.scope === 'name');
+check('the key carries the scope and the page size, so a preset switch restarts the list', (() => {
+    const a = bound.update({ inputs: { pageSize: 5 } }).props.sourceKey;
+    const b = bound.update({ inputs: { pageSize: 5, columnScope: true } }).props.sourceKey;
+    return a.includes('||5|') && b.includes('|name|5|') && a !== b;
+})());
+check('the same key resolves to the same source', bound.update({}).props.resolve === bound.update({}).props.resolve && bound.update({}).props.resolve !== bound.update({ inputs: { pageSize: 3 } }).props.resolve);
+check('the identity inputs stand in for contextInfo', mount({ inputs: { recordId: G1, recordEntity: 'account' } }).props().mode === 'live');
+check('an unsaved record — no identity anywhere — is save-first', mount({}).props().mode === 'save-first' && mount({ inputs: { recordId: 'nope', recordEntity: 'account' } }).props().mode === 'save-first');
+check('no Web API is not-available, before save-first', mount({ webAPI: false }).props().mode === 'not-available' && mount({ webAPI: false, contextInfo: RECORD }).props().mode === 'not-available');
+check('a column the user cannot read is no-access, before anything else', mount({ contextInfo: RECORD, security: 'no-access' }).props().mode === 'no-access');
+const sampleJson = JSON.stringify(sampleDoc);
+const sampledMount = mount({ webAPI: false, inputs: { sampleData: sampleJson } });
+check('sample data is its own mode, whatever the host has', sampledMount.props().mode === 'sample' && sampledMount.props().sourceKey.startsWith('sample|'));
+check('unreadable sample data is its own state', mount({ inputs: { sampleData: '{not json' } }).props().mode === 'bad-sample');
+check('the sample route honours the scope too, and names the column from the sample', (() => {
+    const scoped = mount({ webAPI: false, host: 'canvas', inputs: { sampleData: sampleJson, columnScope: true } }).props();
+    return scoped.scope === 'name' && scoped.columnLabel === 'Account Name' && scoped.sampleLabels.name === 'Account Name';
+})());
+check('readLabels is null without the Utility feature', mount({ contextInfo: RECORD, utils: false }).props().readLabels === null && typeof bound.props().readLabels === 'function');
+check('every sentence comes from the .resx', (() => {
+    const strings = bound.props().strings;
+    return Object.values(strings).every((v) => typeof v === 'string' && v.startsWith('resx:AuditHistory_')) && Object.keys(strings).length === 37;
+})(), String(Object.keys(bound.props().strings).length));
+check('theme and direction are handed down', mount({ contextInfo: RECORD, rtl: true, dark: true }).props().isRTL === true && mount({ contextInfo: RECORD, dark: true }).props().dark === true);
+check('the control writes nothing', JSON.stringify(bound.outputs()) === '{}');
+
+/* -------------------------------------------- the bundle: the markup */
+
+const html = (options) => renderDeep(mount(options).element) || '';
+check('each mode renders its sentence from the .resx', html({ webAPI: false }).includes('resx:AuditHistory_NotAvailable') && html({}).includes('resx:AuditHistory_SaveFirst') && html({ contextInfo: RECORD, security: 'no-access' }).includes('resx:AuditHistory_NoAccess') && html({ inputs: { sampleData: '{' } }).includes('role="alert"'));
+check('a live mount shows the spinner before anything is known — never "no changes"', (() => {
+    const markup = html({ contextInfo: RECORD });
+    return markup.includes('resx:AuditHistory_Loading') && !markup.includes('resx:AuditHistory_NoChanges');
+})());
+check('hidden is nothing', renderDeep(mount({ contextInfo: RECORD, visible: false }).element) === '');
+check('dark and narrow are classes on the root', html({ contextInfo: RECORD, dark: true }).includes('AuditHistory--dark') && html({ contextInfo: RECORD, width: 300 }).includes('AuditHistory--narrow') && !html({ contextInfo: RECORD, width: 800 }).includes('AuditHistory--narrow'));
+
+const rowStrings = bound.props().strings;
+const rowHtml = (detail, expanded) => renderDeep(React.createElement(Cm.ChangeRow, {
+    row: Rw.toRow(audits[3]), detail, expanded, labelOf: (c) => `L:${c}`, strings: rowStrings, getString: marked, onToggle: () => undefined,
+}));
+const closedRow = rowHtml({ status: 'loaded', detail: Df.diffDetail(detailOf(4)) }, false);
+check('a closed row: a button with aria-expanded, when, who, the action and the columns', closedRow.includes('aria-expanded="false"') && closedRow.includes('9/18/2026') && closedRow.includes('Alex Chen') && closedRow.includes('>Update<') && closedRow.includes('L:industrycode') && !closedRow.includes('AuditHistory-table'), closedRow);
+const openRow = rowHtml({ status: 'loaded', detail: Df.diffDetail(detailOf(4)) }, true);
+check('an open row: the values table, old beside new, headers from the .resx', openRow.includes('aria-expanded="true"') && openRow.includes('AuditHistory-table') && openRow.includes('>Accounting<') && openRow.includes('>Business Services<') && openRow.includes('resx:AuditHistory_From'));
+check('a cleared column says so in the new cell', rowHtml({ status: 'loaded', detail: Df.diffDetail(detailOf(3)) }, true).includes('resx:AuditHistory_Cleared'));
+check('a capped value carries the note', rowHtml({ status: 'loaded', detail: Df.diffDetail(detailOf(5)) }, true).includes('resx:AuditHistory_Truncated'));
+check('a share renders its facts, not an empty table', (() => { const m = rowHtml({ status: 'loaded', detail: Df.diffDetail(detailOf(8)) }, true); return m.includes('AuditHistory-facts') && !m.includes('AuditHistory-table'); })());
+check('values still loading show the spinner; failed ones the sentence; a privilege failure the other sentence', rowHtml({ status: 'loading' }, true).includes('resx:AuditHistory_Loading') && rowHtml({ status: 'failed', message: 'x', privilege: false }, true).includes('resx:AuditHistory_DetailFailed') && rowHtml({ status: 'failed', message: 'x', privilege: true }, true).includes('resx:AuditHistory_NoPrivilege'));
+check('a row with no user names one', rowHtml({ status: 'loaded', detail: Df.diffDetail(detailOf(4)) }, false).includes('Alex Chen') && renderDeep(React.createElement(Cm.ChangeRow, { row: { ...Rw.toRow(audits[3]), who: '' }, detail: undefined, expanded: false, labelOf: (c) => c, strings: rowStrings, getString: marked, onToggle: () => undefined })).includes('resx:AuditHistory_UnknownUser'));
+check('fill replaces both placeholders', Cm.fill('{0} of {1}', 3, 26) === '3 of 26' && Cm.fill('Only {0}', 'x') === 'Only x');
+
+/* ------------------------------------------------------------- teardown */
 
 /*
- * **Keep this when the worked example above goes.** It is written against no
- * particular control and needs no knowledge of what yours takes.
- *
- * `destroy` is the lifecycle method with nothing visible riding on it, so it is
- * the one that quietly does nothing. A control that takes an interval, a
- * `requestAnimationFrame` loop, or a listener on `document` or `window` owes
- * each of them back — and none of the three shows up on a form. The interval
- * keeps firing against a container the platform has already thrown away; the
- * document listener keeps the whole control reachable, so nothing about it is
- * ever collected. On a form somebody leaves open all afternoon, or a subgrid
- * that re-renders its rows, they accumulate.
- *
- * Counting before and after is the whole trick. The scaffolded control takes
- * neither, so both numbers are zero and this passes trivially — which is the
- * point: it starts passing for a real reason the moment somebody adds a timer,
- * and fails the moment they forget the other half.
+ * The control takes no timers and no document listeners, so both numbers are
+ * zero and this passes trivially — which is the point: it starts passing for
+ * a real reason the moment somebody adds one, and fails the moment they
+ * forget the other half.
  */
 disposeAll();
 
 const timersBefore = time.pending();
 const listenersBefore = Object.values(dom.document.listeners).reduce((total, list) => total + list.length, 0);
 
-const disposable = mount({});
+const disposable = mount({ contextInfo: RECORD });
 
 disposable.destroy();
 
-check(
-    'destroy() releases every timer the control took',
-    time.pending() === timersBefore,
-    `${timersBefore} → ${time.pending()}`,
-);
-
+check('destroy() releases every timer the control took', time.pending() === timersBefore, `${timersBefore} → ${time.pending()}`);
 check(
     'and every document-level listener',
     Object.values(dom.document.listeners).reduce((total, list) => total + list.length, 0) === listenersBefore,
-    `${listenersBefore} → ${Object.values(dom.document.listeners).reduce((total, list) => total + list.length, 0)}`,
 );
 
-/*
- * The other half, and the leak this shape is famous for. `updateView` runs on
- * every change to any bound value, so a `setInterval` reached from the render
- * path adds a timer per render rather than replacing one.
- */
-const rerendered = mount({});
+const rerendered = mount({ contextInfo: RECORD });
 const afterFirst = time.pending();
 
 rerendered.update({});
 rerendered.update({});
-rerendered.update({});
 
-check(
-    'and re-rendering does not add another one',
-    time.pending() === afterFirst,
-    `${afterFirst} → ${time.pending()}`,
-);
+check('and re-rendering does not add another one', time.pending() === afterFirst);
 
 disposeAll();
 
@@ -735,11 +789,77 @@ async function rigSelfCheck() {
     const page = await ctx.webAPI.retrieveMultipleRecords('account', "?$select=accountid,name&$filter=_parentaccountid_value eq c1&$orderby=name asc", 1);
     check('rig: maxPageSize truncates and says there is more', page.entities.length === 1 && typeof page.nextLink === 'string', JSON.stringify(page));
 
+    /*
+     * The audit half: rows through `webAPI`, values through the two functions
+     * on the fetch stub. The `nextLink` has to carry the query, because a
+     * control hands it straight back — before it did, page two of a filtered
+     * list answered an unfiltered one.
+     */
+    const auditQuery = '?$select=auditid,createdon,action,_objectid_value&$filter=_objectid_value eq c1&$orderby=createdon desc';
+    const first = await ctx.webAPI.retrieveMultipleRecords('audit', auditQuery, 10);
+    const second = await ctx.webAPI.retrieveMultipleRecords('audit', first.nextLink, 10);
+    const third = await ctx.webAPI.retrieveMultipleRecords('audit', second.nextLink, 10);
+    check(
+        'rig: the audit table pages by nextLink, newest first, and the link carries the filter',
+        first.entities.length === 10 && second.entities.length === 10 && third.entities.length === 6 && third.nextLink === undefined
+            && first.entities[0].createdon > second.entities[0].createdon
+            && second.entities.every((row) => row._objectid_value === 'c1'),
+        `${first.entities.length}/${second.entities.length}/${third.entities.length}`,
+    );
+
+    const api = `${ctx.page.getClientUrl()}/api/data/v9.2`;
+    const detail = await fetch(`${api}/audits(${first.entities[1].auditid})/Microsoft.Dynamics.CRM.RetrieveAuditDetails`).then((r) => r.json());
+    check(
+        'rig: RetrieveAuditDetails answers by audit id, lookups annotated, and no AuditRecord',
+        detail.AuditDetail['@odata.type'] === '#Microsoft.Dynamics.CRM.AttributeAuditDetail'
+            && detail.AuditDetail.NewValue['_parentaccountid_value@Microsoft.Dynamics.CRM.lookuplogicalname'] === 'account'
+            && !('AuditRecord' in detail.AuditDetail),
+        JSON.stringify(Object.keys(detail.AuditDetail)),
+    );
+    const unknown = await fetch(`${api}/audits(00000000-0000-0000-0000-0000000000ff)/Microsoft.Dynamics.CRM.RetrieveAuditDetails`);
+    check('rig: an audit id the fixture does not hold is a 404', unknown.status === 404, String(unknown.status));
+
+    const target = encodeURIComponent("{'@odata.id':'accounts(c1)'}");
+    const paging = encodeURIComponent(JSON.stringify({ PageNumber: 2, Count: 10, ReturnTotalRecordCount: true }));
+    const history = await fetch(`${api}/RetrieveRecordChangeHistory(Target=@t,PagingInfo=@p)?@t=${target}&@p=${paging}`).then((r) => r.json());
+    check(
+        'rig: RetrieveRecordChangeHistory pages by @p and counts the whole history',
+        history.AuditDetailCollection.AuditDetails.length === 10 && history.AuditDetailCollection.TotalRecordCount === 26
+            && history.AuditDetailCollection.MoreRecords === true,
+        JSON.stringify([history.AuditDetailCollection.AuditDetails.length, history.AuditDetailCollection.TotalRecordCount]),
+    );
+
+    const definition = await fetch(`${api}/EntityDefinitions(LogicalName='account')?$select=IsAuditEnabled`).then((r) => r.json());
+    const off = host.createContext({ fixture, clientUrl: host.nextClientUrl(), auditEnabled: { org: false, table: false }, auditStatus: 403, auditSummary: false });
+    const offApi = `${off.page.getClientUrl()}/api/data/v9.2`;
+    const offDefinition = await fetch(`${offApi}/EntityDefinitions(LogicalName='account')?$select=IsAuditEnabled`).then((r) => r.json());
+    const offOrg = await off.webAPI.retrieveMultipleRecords('organization', '?$select=isauditenabled&$top=1');
+    check(
+        'rig: IsAuditEnabled is a managed property that follows the switch, on the table and the organisation',
+        definition.IsAuditEnabled.Value === true && offDefinition.IsAuditEnabled.Value === false && offOrg.entities[0].isauditenabled === false,
+        JSON.stringify([definition.IsAuditEnabled, offDefinition.IsAuditEnabled, offOrg.entities[0]]),
+    );
+
+    const refusedDetail = await fetch(`${offApi}/audits(${first.entities[1].auditid})/Microsoft.Dynamics.CRM.RetrieveAuditDetails`);
+    let summaryFault = null;
+    await off.webAPI.retrieveMultipleRecords('audit', auditQuery, 10).catch((error) => { summaryFault = error; });
+    check(
+        'rig: the two audit privileges refuse separately — a 403 body on the function, a plain-object fault on the query',
+        refusedDetail.status === 403 && summaryFault !== null && !(summaryFault instanceof Error) && typeof summaryFault.errorCode === 'number',
+        `${refusedDetail.status} / ${summaryFault && summaryFault.constructor.name}`,
+    );
+
+    let offline = 'resolved';
+    const dark = host.createContext({ fixture, clientUrl: host.nextClientUrl(), auditStatus: 0 });
+    await fetch(`${dark.page.getClientUrl()}/api/data/v9.2/audits(${first.entities[1].auditid})/Microsoft.Dynamics.CRM.RetrieveAuditDetails`)
+        .catch((error) => { offline = error.constructor.name; });
+    check('rig: auditStatus 0 is the offline shape, a TypeError', offline === 'TypeError', offline);
+
     disposeAll();
 }
 
-rigSelfCheck().then(report, (error) => {
-    check('rig: the self-check ran to the end', false, String(error && error.stack || error));
+sources().then(rigSelfCheck).then(report, (error) => {
+    check('the asynchronous half ran to the end', false, String(error && error.stack || error));
     report();
 });
 

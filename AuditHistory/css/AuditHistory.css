@@ -2,42 +2,33 @@
  * Every rule is scoped under the control's own class.
  *
  * A code component shares a document with the host app and with every other
- * control on the form, so a bare `input { … }` here restyles the page it was
+ * control on the form, so a bare `table { … }` here restyles the page it was
  * dropped onto. The platform does not sandbox this for you.
  */
 
 /*
- * The palette, as Fluent's design tokens with literal fallbacks.
- *
- * A standard control cannot mount a `FluentProvider` — the provider is React
- * and this is not — and the usual conclusion from that is that Fluent's styling
- * is out of reach, so the control invents its own colours and ends up looking
- * pasted onto the form. The conclusion is wrong. `FluentProvider` is what
- * *emits* the theme as CSS custom properties, and a model-driven form already
- * mounts one above every code component on the page. Nothing has to be mounted
- * in order to read them.
- *
- * So the token wins where the host publishes it — the control then follows the
- * app's theme *and its brand colour* with no code — and the literal carries the
- * hosts that publish nothing, which includes canvas apps and PCFHub's demo
- * harness. The fallbacks are Fluent's web light theme, taken from
- * `@fluentui/tokens` rather than eyeballed: a value one step off on the neutral
- * ramp is invisible alone and obvious beside the real thing.
+ * The palette, as Fluent's design tokens with literal fallbacks. The token
+ * wins where the host publishes it — the control then follows the app's
+ * theme and brand colour with no code — and the literal carries the hosts
+ * that publish nothing, which includes PCFHub's demo harness. The fallbacks
+ * are Fluent's web light theme, taken from `@fluentui/tokens`.
  */
 .AuditHistory {
     --AuditHistory-background: var(--colorNeutralBackground3, #f5f5f5);
     --AuditHistory-background-hover: var(--colorNeutralBackground3Hover, #ebebeb);
-    --AuditHistory-background-disabled: var(--colorTransparentBackground, transparent);
+    --AuditHistory-background-open: var(--colorNeutralBackground1, #ffffff);
+    --AuditHistory-background-old: var(--colorPaletteRedBackground1, #fdf3f4);
+    --AuditHistory-background-new: var(--colorPaletteGreenBackground1, #f1faf1);
     --AuditHistory-stroke: var(--colorTransparentStroke, transparent);
-    --AuditHistory-stroke-disabled: var(--colorNeutralStrokeDisabled, #e0e0e0);
+    --AuditHistory-stroke-subtle: var(--colorNeutralStroke2, #e0e0e0);
     --AuditHistory-stroke-focus: var(--colorCompoundBrandStroke, #0f6cbd);
-    --AuditHistory-stroke-focus-pressed: var(--colorCompoundBrandStrokePressed, #0f548c);
-    --AuditHistory-stroke-invalid: var(--colorPaletteRedBorder2, #d13438);
     --AuditHistory-foreground: var(--colorNeutralForeground1, #242424);
     --AuditHistory-foreground-secondary: var(--colorNeutralForeground2, #424242);
     --AuditHistory-foreground-placeholder: var(--colorNeutralForeground4, #707070);
-    --AuditHistory-foreground-disabled: var(--colorNeutralForegroundDisabled, #bdbdbd);
     --AuditHistory-foreground-danger: var(--colorPaletteRedForeground1, #bc2f32);
+    --AuditHistory-foreground-brand: var(--colorBrandForeground1, #0f6cbd);
+    --AuditHistory-chip-background: var(--colorBrandBackground2, #ebf3fc);
+    --AuditHistory-chip-foreground: var(--colorBrandForeground2, #115ea3);
     --AuditHistory-radius: var(--borderRadiusMedium, 4px);
     --AuditHistory-font-family: var(
         --fontFamilyBase,
@@ -53,258 +44,345 @@
     --AuditHistory-line-height: var(--lineHeightBase300, 20px);
     --AuditHistory-font-size-caption: var(--fontSizeBase200, 12px);
     --AuditHistory-line-height-caption: var(--lineHeightBase200, 16px);
-    --AuditHistory-duration-fast: var(--durationUltraFast, 50ms);
-    --AuditHistory-duration-normal: var(--durationNormal, 200ms);
     --AuditHistory-duration-faster: var(--durationFaster, 100ms);
-    --AuditHistory-curve-accelerate: var(--curveAccelerateMid, cubic-bezier(1, 0, 1, 1));
-    --AuditHistory-curve-decelerate: var(--curveDecelerateMid, cubic-bezier(0, 0, 0, 1));
     --AuditHistory-curve-ease: var(--curveEasyEase, cubic-bezier(0.33, 0, 0.67, 1));
 
     display: block;
     width: 100%;
     box-sizing: border-box;
     font-family: var(--AuditHistory-font-family);
+    font-size: var(--AuditHistory-font-size);
+    line-height: var(--AuditHistory-line-height);
     color: var(--AuditHistory-foreground);
 }
 
 /*
  * The dark fallbacks, chosen from `fluentDesignLanguage.isDarkTheme` in
- * `index.ts` rather than from `prefers-color-scheme`.
- *
- * The media query is the obvious hook and it answers the wrong question: a
- * model-driven app carries its own theme and the operating system's setting
- * says nothing about it, so an OS-dark machine on a light app would get #141414
- * behind the form's white.
- *
- * Only the fallbacks change here. A host that emits the tokens is already
- * handing over its own dark values through the `var()`, and this block never
- * takes effect there.
+ * `index.ts` rather than from `prefers-color-scheme`: a model-driven app
+ * carries its own theme and the operating system's setting says nothing
+ * about it. Only the fallbacks change here; a host that emits the tokens is
+ * already handing over its own dark values through the `var()`.
  */
 .AuditHistory--dark {
     --AuditHistory-background: var(--colorNeutralBackground3, #141414);
     --AuditHistory-background-hover: var(--colorNeutralBackground3Hover, #292929);
-    --AuditHistory-stroke-disabled: var(--colorNeutralStrokeDisabled, #424242);
+    --AuditHistory-background-open: var(--colorNeutralBackground1, #292929);
+    --AuditHistory-background-old: var(--colorPaletteRedBackground1, #3f1011);
+    --AuditHistory-background-new: var(--colorPaletteGreenBackground1, #052505);
+    --AuditHistory-stroke-subtle: var(--colorNeutralStroke2, #333333);
     --AuditHistory-stroke-focus: var(--colorCompoundBrandStroke, #479ef5);
-    --AuditHistory-stroke-focus-pressed: var(--colorCompoundBrandStrokePressed, #2886de);
-    --AuditHistory-stroke-invalid: var(--colorPaletteRedBorder2, #e37d80);
     --AuditHistory-foreground: var(--colorNeutralForeground1, #ffffff);
     --AuditHistory-foreground-secondary: var(--colorNeutralForeground2, #d6d6d6);
     --AuditHistory-foreground-placeholder: var(--colorNeutralForeground4, #999999);
-    --AuditHistory-foreground-disabled: var(--colorNeutralForegroundDisabled, #5c5c5c);
     --AuditHistory-foreground-danger: var(--colorPaletteRedForeground1, #e37d80);
+    --AuditHistory-foreground-brand: var(--colorBrandForeground1, #479ef5);
+    --AuditHistory-chip-background: var(--colorBrandBackground2, #082338);
+    --AuditHistory-chip-foreground: var(--colorBrandForeground2, #62abf5);
 }
 
-/*
- * The field surface: Fluent's `filled-darker` Input, which is the shape a
- * model-driven form draws. The fill is `colorNeutralBackground3`, all four
- * borders are transparent, and the box is 32px tall — `medium` in Fluent's
- * three field heights, and the one a form uses.
- *
- * The borders are transparent rather than absent on purpose. They hold the
- * height against the box model, and they are what the invalid and disabled
- * states colour in; a field with no border to reveal has to grow one, which
- * moves every field below it.
- */
-.AuditHistory .AuditHistory-field {
-    position: relative;
+.AuditHistory .AuditHistory-root {
+    width: 100%;
+    box-sizing: border-box;
+    padding: var(--spacingVerticalXXS, 2px) 0;
+}
+
+/* ---- toolbar: the column filter, the scope chip, the count ------------- */
+
+.AuditHistory .AuditHistory-toolbar {
     display: flex;
     align-items: center;
-    flex-wrap: nowrap;
-    gap: var(--spacingHorizontalXXS, 2px);
-    box-sizing: border-box;
+    flex-wrap: wrap;
+    gap: var(--spacingHorizontalS, 8px);
+    margin: 0 0 var(--spacingVerticalXS, 4px);
     min-height: 32px;
+}
+
+.AuditHistory .AuditHistory-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacingHorizontalXS, 4px);
+    color: var(--AuditHistory-foreground-secondary);
+    font-size: var(--AuditHistory-font-size-caption);
+    line-height: var(--AuditHistory-line-height-caption);
+}
+
+/* Fluent's outline Dropdown, in one native element: a rounded field with the animated brand underline on focus. */
+.AuditHistory .AuditHistory-select {
+    box-sizing: border-box;
+    min-width: 140px;
+    max-width: 100%;
+    height: 32px;
+    padding: 0 var(--spacingHorizontalS, 8px);
+    border: 1px solid var(--AuditHistory-stroke-subtle);
+    border-bottom-color: var(--colorNeutralStrokeAccessible, #616161);
+    border-radius: var(--AuditHistory-radius);
+    background-color: var(--AuditHistory-background-open);
+    color: var(--AuditHistory-foreground);
+    font: inherit;
+    font-size: var(--AuditHistory-font-size);
+}
+
+.AuditHistory .AuditHistory-select:focus-visible {
+    outline: none;
+    border-bottom: 2px solid var(--AuditHistory-stroke-focus);
+}
+
+.AuditHistory .AuditHistory-chip {
+    display: inline-block;
+    padding: 2px var(--spacingHorizontalS, 8px);
+    border-radius: 12px;
+    background-color: var(--AuditHistory-chip-background);
+    color: var(--AuditHistory-chip-foreground);
+    font-size: var(--AuditHistory-font-size-caption);
+    line-height: var(--AuditHistory-line-height-caption);
+    font-weight: 600;
+}
+
+.AuditHistory .AuditHistory-count {
+    margin-inline-start: auto;
+    color: var(--AuditHistory-foreground-placeholder);
+    font-size: var(--AuditHistory-font-size-caption);
+    line-height: var(--AuditHistory-line-height-caption);
+}
+
+/* ---- the list ---------------------------------------------------------- */
+
+.AuditHistory .AuditHistory-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.AuditHistory .AuditHistory-row {
+    margin: 2px 0;
     border: 1px solid var(--AuditHistory-stroke);
     border-radius: var(--AuditHistory-radius);
     background-color: var(--AuditHistory-background);
     transition: background-color var(--AuditHistory-duration-faster) var(--AuditHistory-curve-ease);
 }
 
-.AuditHistory .AuditHistory-field:hover {
+.AuditHistory .AuditHistory-row:hover {
     background-color: var(--AuditHistory-background-hover);
 }
 
-/*
- * Required, not belt-and-braces. `hidden` works by way of a UA rule
- * `[hidden] { display: none }`, which any author `display` declaration beats on
- * specificity — so the `display: flex` above would leave `field.hidden = true`
- * rendering an empty grey bar where the field-level-security message should be
- * the only thing on the form.
- */
-.AuditHistory .AuditHistory-field[hidden] {
-    display: none;
+.AuditHistory .AuditHistory-row--open {
+    background-color: var(--AuditHistory-background-open);
+    border-color: var(--AuditHistory-stroke-subtle);
 }
 
 /*
- * The animated focus underline — the most recognisable thing Fluent does, and
- * the obvious implementation of it is wrong.
- *
- * A `border-bottom` that appears on focus is 2px of height the box did not have
- * a moment ago, so every field below it nudges down as the user tabs through
- * the form. Scaling an absolutely-positioned pseudo-element is composited and
- * moves nothing.
- *
- * `clip-path` is what keeps a 4px box reading as a 2px line: the height has to
- * clear the corner radius or the line stops short of the rounded ends, and the
- * clip trims the rest. `left`/`right`/`bottom` at -1px put it over the border
- * rather than inside it.
- *
- * The asymmetric duration is Fluent's: 50ms out, 200ms in, so arriving in a
- * field is what the eye catches and leaving one is not.
- *
- * A curve in `transition-delay` is invalid and computes to `0s`, so those two
- * declarations do nothing. They are here because Fluent's own source has them
- * (`useInputStyles.styles.raw.js`) — worth knowing they are inert rather than
- * "fixing" them into a timing function, which would animate differently from
- * every other field on the page. Deleting them is equally correct.
+ * The summary is the whole row, and a button — the chevron sits inside it,
+ * so the leftmost text lines up with the form's other fields whatever the
+ * state (the Hierarchy View lesson, W6). Three cells: when, who, what.
  */
-.AuditHistory .AuditHistory-field::after {
-    content: "";
-    position: absolute;
-    right: -1px;
-    bottom: -1px;
-    left: -1px;
+.AuditHistory .AuditHistory-summary {
+    display: grid;
+    grid-template-columns: 16px minmax(96px, 9em) minmax(80px, 10em) minmax(0, 1fr);
+    align-items: start;
+    column-gap: var(--spacingHorizontalS, 8px);
+    width: 100%;
     box-sizing: border-box;
-    height: max(2px, var(--AuditHistory-radius));
-    border-bottom: 2px solid var(--AuditHistory-stroke-focus);
-    border-bottom-right-radius: var(--AuditHistory-radius);
-    border-bottom-left-radius: var(--AuditHistory-radius);
-    clip-path: inset(calc(100% - 2px) 0 0 0);
-    transform: scaleX(0);
-    transition-property: transform;
-    transition-duration: var(--AuditHistory-duration-fast);
-    transition-delay: var(--AuditHistory-curve-accelerate);
+    min-height: 32px;
+    margin: 0;
+    padding: var(--spacingVerticalXS, 4px) var(--spacingHorizontalS, 8px) var(--spacingVerticalXS, 4px) var(--spacingHorizontalXS, 4px);
+    border: 0;
+    border-radius: var(--AuditHistory-radius);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
 }
 
-/* `:focus-within` rather than `:focus`, so anything added inside the surface
-   later — a button, a picker toggle — lights the same field the input does. */
-.AuditHistory .AuditHistory-field:focus-within::after {
-    transform: scaleX(1);
-    transition-duration: var(--AuditHistory-duration-normal);
-    transition-delay: var(--AuditHistory-curve-decelerate);
+.AuditHistory .AuditHistory-summary:focus-visible {
+    outline: 2px solid var(--AuditHistory-stroke-focus);
+    outline-offset: -2px;
 }
 
-.AuditHistory .AuditHistory-field:focus-within:active::after {
-    border-bottom-color: var(--AuditHistory-stroke-focus-pressed);
+.AuditHistory .AuditHistory-chevron {
+    flex: 0 0 auto;
+    margin-top: 2px;
+    color: var(--AuditHistory-foreground-secondary);
+    transition: transform var(--AuditHistory-duration-faster) var(--AuditHistory-curve-ease);
 }
 
-/* The underline is the focus indicator for this box; suppressing the UA outline
-   here stops a second one being drawn around it. */
-.AuditHistory .AuditHistory-field:focus-within {
-    outline: 2px solid transparent;
+.AuditHistory .AuditHistory-row--open .AuditHistory-chevron {
+    transform: rotate(90deg);
 }
 
-.AuditHistory .AuditHistory-input {
-    /* `min-width: 0` because a flex item's default `min-width: auto` refuses to
-       shrink below its intrinsic width — which pushes anything trailing off a
-       narrow form instead of narrowing the field, and canvas apps put controls
-       in genuinely narrow places. */
-    flex: 1 1 auto;
-    min-width: 0;
-    align-self: stretch;
-    box-sizing: border-box;
-    padding: 0 var(--spacingHorizontalM, 12px);
-    border-style: none;
-    outline-style: none;
-    /* The surface owns the fill; the input is a hole in it. Give the input a
-       fill of its own and the surface's hover shows as a lighter rectangle
-       inside the field. */
-    background-color: transparent;
-    color: var(--AuditHistory-foreground);
-    font-family: inherit;
-    font-size: var(--AuditHistory-font-size);
-    line-height: var(--AuditHistory-line-height);
-    font-weight: var(--fontWeightRegular, 400);
+.AuditHistory[dir="rtl"] .AuditHistory-chevron {
+    transform: rotate(180deg);
+}
+
+.AuditHistory[dir="rtl"] .AuditHistory-row--open .AuditHistory-chevron {
+    transform: rotate(90deg);
+}
+
+.AuditHistory .AuditHistory-when,
+.AuditHistory .AuditHistory-who {
+    overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--AuditHistory-foreground-secondary);
 }
 
-/* `opacity: 1` because Firefox dims placeholders by default, which drags the
-   colour below 4.5:1 against the fill. */
-.AuditHistory .AuditHistory-input::placeholder {
+.AuditHistory .AuditHistory-what {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: var(--spacingHorizontalS, 8px);
+    min-width: 0;
+}
+
+.AuditHistory .AuditHistory-action {
+    font-weight: 600;
+}
+
+.AuditHistory .AuditHistory-columns {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     color: var(--AuditHistory-foreground-placeholder);
-    opacity: 1;
 }
 
-/*
- * Disabled is a different surface, not a dimmer one. `opacity` over the enabled
- * styling is the reflex and it is wrong twice: it drags the *text* below
- * contrast along with the chrome, and it looks nothing like Fluent, which
- * removes the fill and reveals the border.
- */
-.AuditHistory--disabled .AuditHistory-field,
-.AuditHistory--disabled .AuditHistory-field:hover {
-    background-color: var(--AuditHistory-background-disabled);
-    border-color: var(--AuditHistory-stroke-disabled);
+/* ---- the values, open --------------------------------------------------- */
+
+.AuditHistory .AuditHistory-values {
+    padding: 0 var(--spacingHorizontalS, 8px) var(--spacingVerticalS, 8px) 28px;
 }
 
-.AuditHistory--disabled .AuditHistory-input {
-    color: var(--AuditHistory-foreground-disabled);
-    cursor: not-allowed;
+.AuditHistory[dir="rtl"] .AuditHistory-values {
+    padding: 0 28px var(--spacingVerticalS, 8px) var(--spacingHorizontalS, 8px);
 }
 
-.AuditHistory--disabled .AuditHistory-input::placeholder {
-    color: var(--AuditHistory-foreground-disabled);
-}
-
-/* `mode.isVisible` is false. Canvas relies on this; model-driven hides the
-   section itself, so this is the cheap half of supporting both. */
-.AuditHistory--hidden {
-    display: none;
-}
-
-/* The bound property reported `error`. Fluent colours all four borders and
-   drops the colour the moment the field is focused, on the reasoning that
-   somebody already fixing the error does not need telling again. */
-.AuditHistory--invalid .AuditHistory-field:not(:focus-within),
-.AuditHistory--invalid .AuditHistory-field:hover:not(:focus-within) {
-    border-color: var(--AuditHistory-stroke-invalid);
-}
-
-.AuditHistory .AuditHistory-message {
-    margin: var(--spacingVerticalXXS, 2px) 0 0;
-    font-family: inherit;
+.AuditHistory .AuditHistory-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
     font-size: var(--AuditHistory-font-size-caption);
     line-height: var(--AuditHistory-line-height-caption);
+}
+
+.AuditHistory .AuditHistory-table th,
+.AuditHistory .AuditHistory-table td {
+    padding: var(--spacingVerticalXXS, 2px) var(--spacingHorizontalXS, 4px);
+    border-top: 1px solid var(--AuditHistory-stroke-subtle);
+    text-align: start;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+}
+
+.AuditHistory .AuditHistory-table thead th {
+    border-top: 0;
+    color: var(--AuditHistory-foreground-placeholder);
+    font-weight: 400;
+}
+
+.AuditHistory .AuditHistory-table tbody th {
+    width: 28%;
+    color: var(--AuditHistory-foreground-secondary);
+    font-weight: 600;
+}
+
+.AuditHistory .AuditHistory-old {
+    background-color: var(--AuditHistory-background-old);
+}
+
+.AuditHistory .AuditHistory-new {
+    background-color: var(--AuditHistory-background-new);
+}
+
+.AuditHistory .AuditHistory-absent {
+    color: var(--AuditHistory-foreground-placeholder);
+    font-style: italic;
+}
+
+.AuditHistory .AuditHistory-note {
+    display: block;
+    color: var(--AuditHistory-foreground-danger);
+    font-weight: 400;
+}
+
+.AuditHistory .AuditHistory-facts {
+    margin: 0;
+    font-size: var(--AuditHistory-font-size-caption);
+    line-height: var(--AuditHistory-line-height-caption);
+}
+
+.AuditHistory .AuditHistory-facts dt {
+    font-weight: 600;
+}
+
+.AuditHistory .AuditHistory-facts dd {
+    margin: 0;
+}
+
+/* ---- messages and the footer ------------------------------------------- */
+
+.AuditHistory .AuditHistory-message {
+    margin: var(--spacingVerticalXS, 4px) 0;
+    color: var(--AuditHistory-foreground-secondary);
+}
+
+.AuditHistory .AuditHistory-message[role="alert"] {
     color: var(--AuditHistory-foreground-danger);
 }
 
-.AuditHistory .AuditHistory-message[hidden] {
+.AuditHistory .AuditHistory-message--busy {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacingHorizontalS, 8px);
+}
+
+.AuditHistory .AuditHistory-message--inline {
+    margin: 0;
+}
+
+.AuditHistory .AuditHistory-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacingVerticalXS, 4px);
+}
+
+.AuditHistory .AuditHistory-footer {
+    display: flex;
+    align-items: center;
+    gap: var(--spacingHorizontalS, 8px);
+    min-height: 32px;
+    margin-top: var(--spacingVerticalXS, 4px);
+}
+
+/* ---- narrow: a form column, a phone ------------------------------------ */
+
+.AuditHistory--narrow .AuditHistory-summary {
+    grid-template-columns: 16px minmax(0, 1fr);
+    row-gap: 0;
+}
+
+.AuditHistory--narrow .AuditHistory-when,
+.AuditHistory--narrow .AuditHistory-who {
+    grid-column: 2;
+    font-size: var(--AuditHistory-font-size-caption);
+    line-height: var(--AuditHistory-line-height-caption);
+}
+
+.AuditHistory--narrow .AuditHistory-what {
+    grid-column: 2;
+}
+
+.AuditHistory--narrow .AuditHistory-values {
+    padding-left: var(--spacingHorizontalS, 8px);
+}
+
+.AuditHistory--narrow .AuditHistory-table thead {
     display: none;
 }
 
-/*
- * Forced colours collapse every tint to one of a handful of system keywords, so
- * anything carrying meaning by colour has to carry it by shape too. The
- * transparent borders become visible ones and the underline picks up the system
- * highlight instead of the brand.
- */
-@media (forced-colors: active) {
-    .AuditHistory .AuditHistory-field {
-        border-color: ButtonBorder;
-    }
-
-    .AuditHistory .AuditHistory-field::after {
-        border-bottom-color: Highlight;
-    }
-
-    .AuditHistory--disabled .AuditHistory-field {
-        border-color: GrayText;
-    }
-
-    .AuditHistory--disabled .AuditHistory-input {
-        color: GrayText;
-    }
+.AuditHistory--narrow .AuditHistory-table tbody th {
+    width: 36%;
 }
 
-/*
- * Shortened, not removed. The animation is decoration; the focus it indicates
- * is not, so the line still has to appear — it just stops travelling to get
- * there. Fluent ships this pair on the Input itself.
- */
-@media screen and (prefers-reduced-motion: reduce) {
-    .AuditHistory .AuditHistory-field,
-    .AuditHistory .AuditHistory-field::after,
-    .AuditHistory .AuditHistory-field:focus-within::after {
-        transition-duration: 0.01ms;
-        transition-delay: 0.01ms;
-    }
+.AuditHistory--narrow .AuditHistory-count {
+    margin-inline-start: 0;
+    flex-basis: 100%;
 }
