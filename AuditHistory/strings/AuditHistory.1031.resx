@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!--
+    Display names and descriptions for everything declared in
+    ControlManifest.Input.xml. PCFHub reads the manifest, so these strings are
+    what appear in the component's API reference on the hub as well as in the
+    maker's properties pane.
+
+    Copy this file to add a language — AuditHistory.3082.resx for Spanish, and so
+    on — then list it under <resources> in the manifest.
+  -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <data name="AuditHistory_Name" xml:space="preserve">
+    <value>Änderungsverlauf</value>
+  </data>
+  <data name="AuditHistory_Desc" xml:space="preserve">
+    <value>Der Änderungsverlauf eines Datensatzes im Formular: wer was wann geändert hat, mit altem und neuem Wert.</value>
+  </data>
+  <data name="value_Name" xml:space="preserve">
+    <value>Spalte</value>
+  </data>
+  <data name="value_Desc" xml:space="preserve">
+    <value>Eine beliebige Spalte des Datensatzes. Das Steuerelement liest und schreibt sie nie; mit „Nur diese Spalte“ zeigt die Liste nur Änderungen dieser Spalte.</value>
+  </data>
+  <data name="columnScope_Name" xml:space="preserve">
+    <value>Nur diese Spalte</value>
+  </data>
+  <data name="columnScope_Desc" xml:space="preserve">
+    <value>Ein: nur Änderungen der gebundenen Spalte. Aus: jede geprüfte Änderung des Datensatzes.</value>
+  </data>
+  <data name="pageSize_Name" xml:space="preserve">
+    <value>Seitengröße</value>
+  </data>
+  <data name="pageSize_Desc" xml:space="preserve">
+    <value>Änderungen pro Seite und pro „Mehr laden“, 1 bis 100. Jede Änderung kostet eine Anfrage für alten und neuen Wert.</value>
+  </data>
+  <data name="recordId_Name" xml:space="preserve">
+    <value>Datensatz-ID</value>
+  </data>
+  <data name="recordId_Desc" xml:space="preserve">
+    <value>An die ID-Spalte des Datensatzes binden, wenn der Host den Datensatz nicht liefert. Ein modellgesteuertes Formular liefert ihn.</value>
+  </data>
+  <data name="recordEntity_Name" xml:space="preserve">
+    <value>Datensatztabelle</value>
+  </data>
+  <data name="recordEntity_Desc" xml:space="preserve">
+    <value>Der logische Name der Tabelle, z. B. account, wenn der Host den Datensatz nicht liefert.</value>
+  </data>
+  <data name="sampleData_Name" xml:space="preserve">
+    <value>Beispieldaten (nur Demo)</value>
+  </data>
+  <data name="sampleData_Desc" xml:space="preserve">
+    <value>Ein JSON-Verlauf, der statt des Datensatzverlaufs angezeigt wird. Auf einem echten Formular leer lassen.</value>
+  </data>
+  <data name="AuditHistory_NoAccess" xml:space="preserve">
+    <value>Sie haben keinen Zugriff auf diese Spalte.</value>
+  </data>
+  <data name="AuditHistory_NotAvailable" xml:space="preserve">
+    <value>Der Änderungsverlauf ist auf diesem Host nicht verfügbar.</value>
+  </data>
+  <data name="AuditHistory_SaveFirst" xml:space="preserve">
+    <value>Speichern Sie den Datensatz, um seinen Änderungsverlauf zu sehen.</value>
+  </data>
+  <data name="AuditHistory_Loading" xml:space="preserve">
+    <value>Änderungen werden geladen…</value>
+  </data>
+  <data name="AuditHistory_NoChanges" xml:space="preserve">
+    <value>Für diesen Datensatz wurden keine Änderungen aufgezeichnet.</value>
+  </data>
+  <data name="AuditHistory_NoChangesForColumn" xml:space="preserve">
+    <value>Für {0} wurden keine Änderungen aufgezeichnet.</value>
+  </data>
+  <data name="AuditHistory_AuditOffOrg" xml:space="preserve">
+    <value>Die Überwachung ist für diese Umgebung deaktiviert.</value>
+  </data>
+  <data name="AuditHistory_AuditOffTable" xml:space="preserve">
+    <value>Die Überwachung ist für diese Tabelle deaktiviert.</value>
+  </data>
+  <data name="AuditHistory_NoPrivilege" xml:space="preserve">
+    <value>Sie haben keine Berechtigung, den Änderungsverlauf anzuzeigen.</value>
+  </data>
+  <data name="AuditHistory_LoadFailed" xml:space="preserve">
+    <value>Die Änderungen konnten nicht geladen werden.</value>
+  </data>
+  <data name="AuditHistory_DetailFailed" xml:space="preserve">
+    <value>Alter und neuer Wert konnten nicht geladen werden.</value>
+  </data>
+  <data name="AuditHistory_DetailPending" xml:space="preserve">
+    <value>Sie sehen, dass diese Änderung stattfand, aber nicht ihre Werte.</value>
+  </data>
+  <data name="AuditHistory_BadSample" xml:space="preserve">
+    <value>Die Beispieldaten konnten nicht gelesen werden.</value>
+  </data>
+  <data name="AuditHistory_Retry" xml:space="preserve">
+    <value>Erneut versuchen</value>
+  </data>
+  <data name="AuditHistory_LoadMore" xml:space="preserve">
+    <value>Mehr laden</value>
+  </data>
+  <data name="AuditHistory_Showing" xml:space="preserve">
+    <value>{0} von {1} angezeigt</value>
+  </data>
+  <data name="AuditHistory_ShowingCount" xml:space="preserve">
+    <value>{0} Änderungen</value>
+  </data>
+  <data name="AuditHistory_Region" xml:space="preserve">
+    <value>Änderungsverlauf</value>
+  </data>
+  <data name="AuditHistory_When" xml:space="preserve">
+    <value>Wann</value>
+  </data>
+  <data name="AuditHistory_Who" xml:space="preserve">
+    <value>Wer</value>
+  </data>
+  <data name="AuditHistory_What" xml:space="preserve">
+    <value>Änderung</value>
+  </data>
+  <data name="AuditHistory_ColumnHeader" xml:space="preserve">
+    <value>Spalte</value>
+  </data>
+  <data name="AuditHistory_From" xml:space="preserve">
+    <value>Vorher</value>
+  </data>
+  <data name="AuditHistory_To" xml:space="preserve">
+    <value>Nachher</value>
+  </data>
+  <data name="AuditHistory_Expand" xml:space="preserve">
+    <value>Werte anzeigen</value>
+  </data>
+  <data name="AuditHistory_Collapse" xml:space="preserve">
+    <value>Werte ausblenden</value>
+  </data>
+  <data name="AuditHistory_ChangedColumns" xml:space="preserve">
+    <value>{0} Spalten</value>
+  </data>
+  <data name="AuditHistory_FilterLabel" xml:space="preserve">
+    <value>Spalte</value>
+  </data>
+  <data name="AuditHistory_AllColumns" xml:space="preserve">
+    <value>Alle Spalten</value>
+  </data>
+  <data name="AuditHistory_OnlyColumn" xml:space="preserve">
+    <value>Nur {0}</value>
+  </data>
+  <data name="AuditHistory_Cleared" xml:space="preserve">
+    <value>(gelöscht)</value>
+  </data>
+  <data name="AuditHistory_Empty" xml:space="preserve">
+    <value>(leer)</value>
+  </data>
+  <data name="AuditHistory_UnknownUser" xml:space="preserve">
+    <value>Unbekannter Benutzer</value>
+  </data>
+  <data name="AuditHistory_Truncated" xml:space="preserve">
+    <value>Bei 5 KB abgeschnitten</value>
+  </data>
+  <data name="AuditHistory_NoDetail" xml:space="preserve">
+    <value>Für diese Änderung sind keine Werte aufgezeichnet.</value>
+  </data>
+  <data name="AuditHistory_SharedWith" xml:space="preserve">
+    <value>Geteilt mit {0}</value>
+  </data>
+  <data name="AuditHistory_Relationship" xml:space="preserve">
+    <value>Beziehung {0}</value>
+  </data>
+  <data name="AuditHistory_ActionCreate" xml:space="preserve">
+    <value>Erstellt</value>
+  </data>
+  <data name="AuditHistory_ActionUpdate" xml:space="preserve">
+    <value>Aktualisiert</value>
+  </data>
+  <data name="AuditHistory_ActionDelete" xml:space="preserve">
+    <value>Gelöscht</value>
+  </data>
+  <data name="AuditHistory_ActionMerge" xml:space="preserve">
+    <value>Zusammengeführt</value>
+  </data>
+  <data name="AuditHistory_ActionAssign" xml:space="preserve">
+    <value>Zugewiesen</value>
+  </data>
+  <data name="AuditHistory_ActionSetState" xml:space="preserve">
+    <value>Status geändert</value>
+  </data>
+  <data name="AuditHistory_ActionShare" xml:space="preserve">
+    <value>Geteilt</value>
+  </data>
+  <data name="AuditHistory_ActionModifyShare" xml:space="preserve">
+    <value>Freigabe geändert</value>
+  </data>
+  <data name="AuditHistory_ActionUnshare" xml:space="preserve">
+    <value>Freigabe aufgehoben</value>
+  </data>
+  <data name="AuditHistory_ActionAssociate" xml:space="preserve">
+    <value>Verknüpft</value>
+  </data>
+  <data name="AuditHistory_ActionDisassociate" xml:space="preserve">
+    <value>Verknüpfung aufgehoben</value>
+  </data>
+  <data name="AuditHistory_ActionOther" xml:space="preserve">
+    <value>Aktion {0}</value>
+  </data>
+</root>

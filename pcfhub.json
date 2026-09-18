@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+
+  "slug": "pcf-audit-history",
+  "name": "Audit History",
+  "tagline": "A record's audit history on the form: who changed what, when, and the old value beside the new.",
+  "category": "utilities",
+  "tags": [],
+
+  "control": {
+    "namespace": "PCFHub",
+    "constructor": "AuditHistory",
+    "type": "virtual",
+    "framework": "react_virtual",
+    "manifestPath": "AuditHistory/ControlManifest.Input.xml"
+  },
+
+  "links": {
+    "homepage": "https://github.com/pcfhub/pcf-audit-history",
+    "support": "https://github.com/pcfhub/pcf-audit-history/issues",
+    "license": "MIT"
+  },
+
+  "docs": {
+    "path": "docs"
+  },
+
+  "media": {
+    "logo": "media/logo.png",
+    "screenshots": []
+  },
+
+  "demo": {
+    "fidelity": "none",
+    "presets": []
+  }
+}

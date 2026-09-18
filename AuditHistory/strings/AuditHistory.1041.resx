@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!--
+    Display names and descriptions for everything declared in
+    ControlManifest.Input.xml. PCFHub reads the manifest, so these strings are
+    what appear in the component's API reference on the hub as well as in the
+    maker's properties pane.
+
+    Copy this file to add a language — AuditHistory.3082.resx for Spanish, and so
+    on — then list it under <resources> in the manifest.
+  -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <data name="AuditHistory_Name" xml:space="preserve">
+    <value>監査履歴</value>
+  </data>
+  <data name="AuditHistory_Desc" xml:space="preserve">
+    <value>フォーム上のレコードの監査履歴: 誰が、いつ、何を変更したかを、変更前と変更後の値と共に表示します。</value>
+  </data>
+  <data name="value_Name" xml:space="preserve">
+    <value>列</value>
+  </data>
+  <data name="value_Desc" xml:space="preserve">
+    <value>レコードの任意の列。コントロールはこの列を読み書きしません。「この列のみ」がオンのとき、一覧はこの列の変更に絞られます。</value>
+  </data>
+  <data name="columnScope_Name" xml:space="preserve">
+    <value>この列のみ</value>
+  </data>
+  <data name="columnScope_Desc" xml:space="preserve">
+    <value>オン: バインドされた列の変更のみ。オフ: レコードの監査対象の変更をすべて表示します。</value>
+  </data>
+  <data name="pageSize_Name" xml:space="preserve">
+    <value>ページ サイズ</value>
+  </data>
+  <data name="pageSize_Desc" xml:space="preserve">
+    <value>ページごと、および「さらに読み込む」ごとに取得する変更数 (1〜100)。変更ごとに変更前後の値の要求が 1 回発生します。</value>
+  </data>
+  <data name="recordId_Name" xml:space="preserve">
+    <value>レコード ID</value>
+  </data>
+  <data name="recordId_Desc" xml:space="preserve">
+    <value>ホストがレコードを提供しない場合、レコード自身の ID 列にバインドします。モデル駆動型フォームは提供します。</value>
+  </data>
+  <data name="recordEntity_Name" xml:space="preserve">
+    <value>レコードのテーブル</value>
+  </data>
+  <data name="recordEntity_Desc" xml:space="preserve">
+    <value>ホストがレコードを提供しない場合のテーブルの論理名 (例: account)。</value>
+  </data>
+  <data name="sampleData_Name" xml:space="preserve">
+    <value>サンプル データ (デモ専用)</value>
+  </data>
+  <data name="sampleData_Desc" xml:space="preserve">
+    <value>レコードの履歴の代わりに表示する JSON 履歴。実際のフォームでは空のままにしてください。</value>
+  </data>
+  <data name="AuditHistory_NoAccess" xml:space="preserve">
+    <value>この列にアクセスできません。</value>
+  </data>
+  <data name="AuditHistory_NotAvailable" xml:space="preserve">
+    <value>このホストでは監査履歴を利用できません。</value>
+  </data>
+  <data name="AuditHistory_SaveFirst" xml:space="preserve">
+    <value>監査履歴を表示するには、レコードを保存してください。</value>
+  </data>
+  <data name="AuditHistory_Loading" xml:space="preserve">
+    <value>変更を読み込んでいます…</value>
+  </data>
+  <data name="AuditHistory_NoChanges" xml:space="preserve">
+    <value>このレコードには記録された変更がありません。</value>
+  </data>
+  <data name="AuditHistory_NoChangesForColumn" xml:space="preserve">
+    <value>{0} には記録された変更がありません。</value>
+  </data>
+  <data name="AuditHistory_AuditOffOrg" xml:space="preserve">
+    <value>この環境では監査がオフになっています。</value>
+  </data>
+  <data name="AuditHistory_AuditOffTable" xml:space="preserve">
+    <value>このテーブルでは監査がオフになっています。</value>
+  </data>
+  <data name="AuditHistory_NoPrivilege" xml:space="preserve">
+    <value>監査履歴を表示する権限がありません。</value>
+  </data>
+  <data name="AuditHistory_LoadFailed" xml:space="preserve">
+    <value>変更を読み込めませんでした。</value>
+  </data>
+  <data name="AuditHistory_DetailFailed" xml:space="preserve">
+    <value>変更前後の値を読み込めませんでした。</value>
+  </data>
+  <data name="AuditHistory_DetailPending" xml:space="preserve">
+    <value>この変更があったことは確認できますが、値は表示できません。</value>
+  </data>
+  <data name="AuditHistory_BadSample" xml:space="preserve">
+    <value>サンプル データを読み取れませんでした。</value>
+  </data>
+  <data name="AuditHistory_Retry" xml:space="preserve">
+    <value>再試行</value>
+  </data>
+  <data name="AuditHistory_LoadMore" xml:space="preserve">
+    <value>さらに読み込む</value>
+  </data>
+  <data name="AuditHistory_Showing" xml:space="preserve">
+    <value>{1} 件中 {0} 件を表示</value>
+  </data>
+  <data name="AuditHistory_ShowingCount" xml:space="preserve">
+    <value>{0} 件の変更</value>
+  </data>
+  <data name="AuditHistory_Region" xml:space="preserve">
+    <value>監査履歴</value>
+  </data>
+  <data name="AuditHistory_When" xml:space="preserve">
+    <value>日時</value>
+  </data>
+  <data name="AuditHistory_Who" xml:space="preserve">
+    <value>変更者</value>
+  </data>
+  <data name="AuditHistory_What" xml:space="preserve">
+    <value>変更</value>
+  </data>
+  <data name="AuditHistory_ColumnHeader" xml:space="preserve">
+    <value>列</value>
+  </data>
+  <data name="AuditHistory_From" xml:space="preserve">
+    <value>変更前</value>
+  </data>
+  <data name="AuditHistory_To" xml:space="preserve">
+    <value>変更後</value>
+  </data>
+  <data name="AuditHistory_Expand" xml:space="preserve">
+    <value>値を表示</value>
+  </data>
+  <data name="AuditHistory_Collapse" xml:space="preserve">
+    <value>値を非表示</value>
+  </data>
+  <data name="AuditHistory_ChangedColumns" xml:space="preserve">
+    <value>{0} 列</value>
+  </data>
+  <data name="AuditHistory_FilterLabel" xml:space="preserve">
+    <value>列</value>
+  </data>
+  <data name="AuditHistory_AllColumns" xml:space="preserve">
+    <value>すべての列</value>
+  </data>
+  <data name="AuditHistory_OnlyColumn" xml:space="preserve">
+    <value>{0} のみ</value>
+  </data>
+  <data name="AuditHistory_Cleared" xml:space="preserve">
+    <value>(クリア)</value>
+  </data>
+  <data name="AuditHistory_Empty" xml:space="preserve">
+    <value>(空)</value>
+  </data>
+  <data name="AuditHistory_UnknownUser" xml:space="preserve">
+    <value>不明なユーザー</value>
+  </data>
+  <data name="AuditHistory_Truncated" xml:space="preserve">
+    <value>5 KB で切り捨て</value>
+  </data>
+  <data name="AuditHistory_NoDetail" xml:space="preserve">
+    <value>この変更には記録された値がありません。</value>
+  </data>
+  <data name="AuditHistory_SharedWith" xml:space="preserve">
+    <value>{0} と共有</value>
+  </data>
+  <data name="AuditHistory_Relationship" xml:space="preserve">
+    <value>リレーションシップ {0}</value>
+  </data>
+  <data name="AuditHistory_ActionCreate" xml:space="preserve">
+    <value>作成</value>
+  </data>
+  <data name="AuditHistory_ActionUpdate" xml:space="preserve">
+    <value>更新</value>
+  </data>
+  <data name="AuditHistory_ActionDelete" xml:space="preserve">
+    <value>削除</value>
+  </data>
+  <data name="AuditHistory_ActionMerge" xml:space="preserve">
+    <value>マージ</value>
+  </data>
+  <data name="AuditHistory_ActionAssign" xml:space="preserve">
+    <value>割り当て</value>
+  </data>
+  <data name="AuditHistory_ActionSetState" xml:space="preserve">
+    <value>状態の変更</value>
+  </data>
+  <data name="AuditHistory_ActionShare" xml:space="preserve">
+    <value>共有</value>
+  </data>
+  <data name="AuditHistory_ActionModifyShare" xml:space="preserve">
+    <value>共有の変更</value>
+  </data>
+  <data name="AuditHistory_ActionUnshare" xml:space="preserve">
+    <value>共有の解除</value>
+  </data>
+  <data name="AuditHistory_ActionAssociate" xml:space="preserve">
+    <value>関連付け</value>
+  </data>
+  <data name="AuditHistory_ActionDisassociate" xml:space="preserve">
+    <value>関連付けの解除</value>
+  </data>
+  <data name="AuditHistory_ActionOther" xml:space="preserve">
+    <value>アクション {0}</value>
+  </data>
+</root>

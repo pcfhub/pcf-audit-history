@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<manifest>
+  <!--
+    The version here is what the Power Platform upgrades on, and the release
+    workflow refuses to publish a tag that disagrees with it. Bump this in the
+    same commit as the tag.
+  -->
+  <control namespace="PCFHub"
+           constructor="AuditHistory"
+           version="0.0.1"
+           display-name-key="AuditHistory_Name"
+           description-key="AuditHistory_Desc"
+           control-type="virtual">
+
+    <!--
+      Leave this disabled unless the control calls a third-party service.
+
+      `enabled="true"` makes the control **premium**, and premium is a cost
+      somebody else pays: every end user of an app containing this component
+      then needs a Power Apps licence rather than an Office 365 one. Nothing
+      fails to build, nothing warns at install, and the person who finds out is
+      not the person who typed it — so this is worth confirming with whoever
+      owns the control rather than flipping to make a `fetch` work.
+
+      The only `fetch` here goes to the organisation's own URL — same origin,
+      no domain to declare.
+    -->
+    <external-service-usage enabled="false" />
+
+    <!--
+      PCFHub generates the component's API reference from this file, at the tag
+      of each release. It records `display-name-key` and `description-key`
+      verbatim — it does not read the .resx — so keep the keys readable.
+    -->
+
+    <!--
+      The column this control is placed on. It can be ANY column: the control
+      never reads or writes the value — a record's audit history is not a
+      property of one column — it reads the column's logical name off
+      `attributes.LogicalName`, and that gives the maker one thing for free:
+      with `columnScope` on, the list narrows to changes of this column.
+
+      A type group this wide erases the generated `raw` type to `any`, which
+      is the price of "any column". Nothing here touches `raw`, so the price
+      is one cast in platform.ts and nothing else. File, Image and the
+      Customer/Owner/Regarding lookups are not bindable by any control and
+      are not listed.
+    -->
+    <type-group name="anyColumn">
+      <type>SingleLine.Text</type>
+      <type>SingleLine.TextArea</type>
+      <type>SingleLine.Email</type>
+      <type>SingleLine.Phone</type>
+      <type>SingleLine.URL</type>
+      <type>SingleLine.Ticker</type>
+      <type>Multiple</type>
+      <type>Whole.None</type>
+      <type>Decimal</type>
+      <type>FP</type>
+      <type>Currency</type>
+      <type>DateAndTime.DateOnly</type>
+      <type>DateAndTime.DateAndTime</type>
+      <type>OptionSet</type>
+      <type>MultiSelectOptionSet</type>
+      <type>TwoOptions</type>
+      <type>Lookup.Simple</type>
+    </type-group>
+
+    <property name="value"
+              display-name-key="value_Name"
+              description-key="value_Desc"
+              of-type-group="anyColumn"
+              usage="bound"
+              required="true" />
+
+    <!--
+      On: only changes to the bound column are listed. Off (the default, and
+      a TwoOptions input cannot default to on): every audited change to the
+      record. The scope is applied to the pages the control has loaded, so a
+      page with no change to this column loads the next one, up to a few.
+    -->
+    <property name="columnScope"
+              display-name-key="columnScope_Name"
+              description-key="columnScope_Desc"
+              of-type="TwoOptions"
+              usage="input"
+              required="false" />
+
+    <!--
+      Changes fetched per page, and the size of each "Load more". Clamped to
+      1–100 by the control; every row costs one request for its old and new
+      values, so this is a request count as much as a row count.
+    -->
+    <property name="pageSize"
+              display-name-key="pageSize_Name"
+              description-key="pageSize_Desc"
+              of-type="Whole.None"
+              usage="input"
+              required="false"
+              default-value="20" />
+
+    <!--
+      The record this control is on, supplied by the maker.
+
+      `context` deliberately does not carry the record's identity — the
+      platform FAQ says to add input properties and bind them on the form. The
+      control prefers the undocumented `context.mode.contextInfo` when the
+      host has it (a model-driven form does) and falls back to these two.
+      Neither is sufficient alone: contextInfo is absent from the typings and
+      from canvas; these are empty unless a maker configured them.
+    -->
+    <property name="recordId"
+              display-name-key="recordId_Name"
+              description-key="recordId_Desc"
+              of-type="SingleLine.Text"
+              usage="input"
+              required="false" />
+
+    <property name="recordEntity"
+              display-name-key="recordEntity_Name"
+              description-key="recordEntity_Desc"
+              of-type="SingleLine.Text"
+              usage="input"
+              required="false" />
+
+    <!--
+      A JSON history the control renders INSTEAD of asking Dataverse. It
+      exists for PCFHub's demo, whose harness has no Web API, and for a maker
+      who wants to see the layout before placing it. Leave it blank on a real
+      form: when set, the control never queries, whatever the record holds.
+
+          { "table": "account", "column": "name",
+            "auditing": { "org": true, "table": true },
+            "changes": [ { "id": "a1", "when": "2026-09-18T14:05:00Z",
+                           "who": "Alex Chen", "action": 2,
+                           "changes": [ { "column": "name", "label": "Account Name",
+                                          "old": "Contoso", "new": "Contoso Ltd" } ] } ] }
+    -->
+    <property name="sampleData"
+              display-name-key="sampleData_Name"
+              description-key="sampleData_Desc"
+              of-type="Multiple"
+              usage="input"
+              required="false" />
+
+    <resources>
+      <code path="index.ts" order="1" />
+      <css path="css/AuditHistory.css" order="1" />
+      <!--
+        Every language the control ships.
+
+        A .resx that exists on disk but is not listed here is not shipped, and
+        nothing warns — the file is simply never packed, and the control runs
+        in English for that locale while the repository looks translated.
+        `npm run check` catches both that and a key missing from a language.
+
+        THE ORDER IS DELIBERATE AND 1033 GOES LAST. `pcf-start` picks the .resx
+        by manifest order rather than by locale: it reads whichever file is
+        listed *last* and ignores the LCID and the browser language entirely.
+        The platform itself ignores the order completely, so `npm start` is the
+        only thing in the world that reads it. ADD A NEW LANGUAGE ABOVE 1033.
+      -->
+      <platform-library name="React" version="16.14.0" />
+      <platform-library name="Fluent" version="9.46.2" />
+      <resx path="strings/AuditHistory.3082.resx" version="1.0.0" />
+      <resx path="strings/AuditHistory.1036.resx" version="1.0.0" />
+      <resx path="strings/AuditHistory.1031.resx" version="1.0.0" />
+      <resx path="strings/AuditHistory.1041.resx" version="1.0.0" />
+      <resx path="strings/AuditHistory.1033.resx" version="1.0.0" />
+    </resources>
+
+    <!--
+      Both optional, because the control degrades rather than refuses:
+      without `WebAPI` there is no list at all and the control says so;
+      without `Utility` the column labels are logical names.
+
+      The audit detail — the old value beside the new — comes from a Web API
+      *function* (`audits(<id>)/Microsoft.Dynamics.CRM.RetrieveAuditDetails`)
+      that `context.webAPI` cannot call, so it is a same-origin `fetch` of
+      the organisation URL. No feature gates that; the same is true of the
+      `EntityDefinitions` read that says whether the table is audited.
+    -->
+    <feature-usage>
+      <uses-feature name="WebAPI" required="false" />
+      <uses-feature name="Utility" required="false" />
+    </feature-usage>
+  </control>
+</manifest>
