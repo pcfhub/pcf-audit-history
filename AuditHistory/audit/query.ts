@@ -56,6 +56,17 @@ export function tableDefinitionPath(table: string): string {
     return `EntityDefinitions(LogicalName='${encodeURIComponent(table)}')?$select=IsAuditEnabled,EntitySetName`;
 }
 
+/**
+ * Every column's `IsValidForUpdate`, in one fetch per table (238 rows in
+ * 87 ms on account, R6). It is the only source: `getEntityMetadata`'s items
+ * do not carry it (R6), and the server does not refuse a write to a column
+ * that cannot be updated — it resolves and changes nothing (R9) — so this
+ * read is what keeps a Restore from succeeding at nothing.
+ */
+export function attributesPath(table: string): string {
+    return `EntityDefinitions(LogicalName='${encodeURIComponent(table)}')/Attributes?$select=LogicalName,AttributeType,IsValidForUpdate`;
+}
+
 export interface PagingInfo {
     pageNumber: number;
     count: number;

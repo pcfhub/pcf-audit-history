@@ -13,7 +13,7 @@
 
 import { IInputs } from './generated/ManifestTypes';
 import { bareId, Row } from './audit/rows';
-import { detailsPath, isLogicalName, ORGANIZATION_QUERY, tableDefinitionPath } from './audit/query';
+import { attributesPath, detailsPath, isLogicalName, ORGANIZATION_QUERY, tableDefinitionPath } from './audit/query';
 import { WriteApi } from './data/Restorer';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -72,9 +72,10 @@ export interface HostReading {
     /** Reopens the current record through `navigation.openForm`, or `null`. */
     openRecord: (() => Promise<void>) | null;
     /**
-     * Whether columns take an update, from `getEntityMetadata`'s
-     * `IsValidForUpdate` when the item carries it; `null` per column when
-     * the host does not say, which is "not known to be refused".
+     * Whether columns take an update, from the table's attribute metadata —
+     * one same-origin fetch per table, cached; `null` per column when the
+     * host cannot say (no organisation URL, a refused fetch), which is "not
+     * known to be refused".
      */
     updatable: ((table: string, columns: string[]) => Promise<Record<string, boolean | null>>) | null;
     /** The user's own name, for the demo route's restore row. */
@@ -150,42 +151,71 @@ function openRecordReader(context: ComponentFramework.Context<IInputs>, table: s
 }
 
 /**
- * `IsValidForUpdate` off the metadata item when it is there. SPEC.md R6 is
- * the question; until it is answered the reader is honest about absence:
- * an item without the member answers `null`, and `null` refuses nothing.
+ * `IsValidForUpdate` per column, from `EntityDefinitions(…)/Attributes` —
+ * measured (R6) as the only place it is: `getEntityMetadata`'s items carry
+ * `AttributeType` and `Targets` and not this. Read once per organisation
+ * and table for the life of the page; a failure is not cached and answers
+ * `null` for every column, which refuses nothing — a host that cannot say
+ * is not a host that said no. A column the table does not list is `null`
+ * too.
  */
-function updatableReader(context: ComponentFramework.Context<IInputs>): HostReading['updatable'] {
-    const utils = (context as any).utils;
+const attributesCache = new Map<string, Promise<Record<string, boolean> | null>>();
 
-    if (typeof utils?.getEntityMetadata !== 'function') {
+export function tableAttributes(clientUrl: string, table: string): Promise<Record<string, boolean> | null> {
+    const key = `${clientUrl}|${table}`;
+    const cached = attributesCache.get(key);
+
+    if (cached) {
+        return cached;
+    }
+
+    const answer = fetchJson(clientUrl, attributesPath(table), false)
+        .then((response) => {
+            const list: unknown = response.ok ? response.body?.value : undefined;
+
+            if (!Array.isArray(list)) {
+                attributesCache.delete(key);
+
+                return null;
+            }
+
+            const out: Record<string, boolean> = {};
+
+            for (const item of list) {
+                const name = (item as any)?.LogicalName;
+                const valid = (item as any)?.IsValidForUpdate;
+
+                if (typeof name === 'string' && typeof valid === 'boolean') {
+                    out[name.toLowerCase()] = valid;
+                }
+            }
+
+            return out;
+        })
+        .catch(() => {
+            attributesCache.delete(key);
+
+            return null;
+        });
+
+    attributesCache.set(key, answer);
+
+    return answer;
+}
+
+function updatableReader(clientUrl: string | null): HostReading['updatable'] {
+    if (clientUrl === null) {
         return null;
     }
 
     return (table: string, columns: string[]) =>
-        utils.getEntityMetadata(table, columns).then((metadata: any) => {
+        tableAttributes(clientUrl, table).then((known) => {
             const out: Record<string, boolean | null> = {};
-            const attributes = metadata?.Attributes;
 
             for (const column of columns) {
-                let attribute: any;
-
-                try {
-                    attribute = typeof attributes?.get === 'function' ? attributes.get(column) : attributes?.[column];
-                } catch {
-                    attribute = undefined;
-                }
-
-                const valid = attribute?.IsValidForUpdate;
+                const valid = known?.[column];
 
                 out[column] = typeof valid === 'boolean' ? valid : null;
-            }
-
-            return out;
-        }, () => {
-            const out: Record<string, boolean | null> = {};
-
-            for (const column of columns) {
-                out[column] = null;
             }
 
             return out;
@@ -358,6 +388,7 @@ export function tableDefinition(clientUrl: string, table: string): Promise<{ aud
 /** For the suite, and for a page that changes organisation under the control — which no form does. */
 export function forgetDefinitions(): void {
     definitionCache.clear();
+    attributesCache.clear();
 }
 
 /** `null` when the host could not say: a refused read is not "auditing is off". */
@@ -475,7 +506,7 @@ export function readHost(context: ComponentFramework.Context<IInputs>): HostRead
         writePrivilege: readWritePrivilege(context, record.table),
         confirm: confirmReader(context),
         openRecord: openRecordReader(context, record.table, record.recordId),
-        updatable: updatableReader(context),
+        updatable: updatableReader(clientUrl),
         userName: typeof context.userSettings?.userName === 'string' ? context.userSettings.userName : '',
         label: context.mode.label,
         // Compared against `false`, never read as a boolean — an unmapped

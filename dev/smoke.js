@@ -657,6 +657,14 @@ async function sources() {
     const labels = await P.readHost(ctx).columnLabels('account', ['name', 'parentaccountid', 'nosuchcolumn']);
     check('columnLabels reads DisplayName by name off the item collection and leaves an unknown column out', labels.name === 'Account Name' && labels.parentaccountid === 'Parent Account' && labels.nosuchcolumn === undefined, JSON.stringify(labels));
 
+    const attributes = await P.tableAttributes(url, 'account');
+    check("tableAttributes reads IsValidForUpdate per column off the table's attribute metadata, one fetch per table", attributes.name === true && attributes.address1_composite === false && attributes.createdon === false && attributes.nosuchcolumn === undefined, JSON.stringify(attributes));
+    check('… cached: a second read is the same promise, no second fetch', P.tableAttributes(url, 'account') === P.tableAttributes(url, 'account'));
+    check('… and is null for a table the organisation does not have, uncached', await P.tableAttributes(url, 'nosuchtable') === null);
+    const updatable = await P.readHost(ctx).updatable('account', ['name', 'address1_composite', 'nosuchcolumn']);
+    check('updatable answers true, false, and null for a column the table does not list — null refuses nothing', updatable.name === true && updatable.address1_composite === false && updatable.nosuchcolumn === null, JSON.stringify(updatable));
+    check('updatable is null without an organisation URL — not without Utility', P.readHost(ctxWith({ contextInfo: RECORD, page: false })).updatable === null && typeof P.readHost(ctxWith({ contextInfo: RECORD, utils: false })).updatable === 'function');
+
     const options = { webAPI: ctx.webAPI, clientUrl: url, entitySet: 'accounts', recordId: 'c1', table: 'account', pageSize: 10, column: null };
     const live = Ds.createLiveSource(options);
     const page1 = await live.loadPage(null);
@@ -833,7 +841,7 @@ check('… and off on a read-only form, for a user without Write, without a dial
 })());
 check('… but a host that cannot say about the privilege is not a refusal', mount({ contextInfo: RECORD, inputs: { showRestore: true }, utils: false }).props().canRestore === true);
 check('the demo route offers Restore with no Web API and no dialog — it simulates both', mount({ webAPI: false, host: 'canvas', inputs: { sampleData: sampleJson, showRestore: true } }).props().canRestore === true && mount({ webAPI: false, inputs: { sampleData: sampleJson } }).props().canRestore === false);
-check('readUpdatable is null without the Utility feature, a function with it', mount({ contextInfo: RECORD, utils: false }).props().readUpdatable === null && typeof bound.props().readUpdatable === 'function');
+check('readUpdatable is null without an organisation URL, a function with one', mount({ contextInfo: RECORD, page: false }).props().readUpdatable === null && typeof bound.props().readUpdatable === 'function');
 check('openRecord is null without openForm or a record', mount({ contextInfo: RECORD, openForm: 'absent' }).props().openRecord === null && mount({}).props().openRecord === null && typeof bound.props().openRecord === 'function');
 check('every sentence comes from the .resx', (() => {
     const strings = bound.props().strings;
@@ -1093,6 +1101,12 @@ async function rigSelfCheck() {
     let refFault = null;
     await writeCtx.webAPI.updateRecord('account', 'c1', { 'parentaccountid@odata.bind': '/accounts(nosuchid)' }).catch((e) => { refFault = e; });
     check('rig: an undeclared bind and a bind to a missing record refuse the way the server does', bindFault && /undeclared property 'nosuch'/.test(bindFault.message) && refFault && refFault.title === 'Record Is Unavailable', JSON.stringify([bindFault && bindFault.errorCode, refFault && refFault.errorCode]));
+    let dropped = null;
+    await writeCtx.webAPI.updateRecord('account', 'c1', { address1_composite: 'probe', name: 'Kept' }).then((r) => { dropped = r; });
+    const afterDrop = await writeCtx.webAPI.retrieveRecord('account', 'c1', '?$select=name,address1_composite');
+    check("rig: a write to a column the metadata marks not updatable resolves and changes nothing — the server's way (R9) — while the rest of the payload lands", dropped !== null && afterDrop.name === 'Kept' && afterDrop.address1_composite === undefined, JSON.stringify(afterDrop));
+    const attrs = await (await fetch(`${writeCtx.page.getClientUrl()}/api/data/v9.2/EntityDefinitions(LogicalName='account')/Attributes?$select=LogicalName,AttributeType,IsValidForUpdate`)).json();
+    check("rig: EntityDefinitions/Attributes lists every labelled column as updatable and the fixture's frozen ones as not", attrs.value.some((a) => a.LogicalName === 'name' && a.IsValidForUpdate === true) && attrs.value.some((a) => a.LogicalName === 'address1_composite' && a.IsValidForUpdate === false && a.AttributeType === 'Memo'), String(attrs.value.length));
     check('rig: userSettings names the user the write is audited as', writeCtx.userSettings.userName === 'Rig User' && typeof writeCtx.userSettings.userId === 'string');
     check('rig: getEntityMetadata(target).EntitySetName is the target\'s, from the fixture', (await writeCtx.utils.getEntityMetadata('contact')).EntitySetName === 'contacts' && (await writeCtx.utils.getEntityMetadata('account')).EntitySetName === 'accounts');
 

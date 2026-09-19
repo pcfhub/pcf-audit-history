@@ -113,7 +113,7 @@ export interface IProps {
     confirm: ((strings: ConfirmStrings) => Promise<boolean>) | null;
     /** Reopens the record, for the notice after a restore; `null` where the host cannot. */
     openRecord: (() => Promise<void>) | null;
-    /** Whether columns take an update, or `null` without the Utility feature. */
+    /** Whether columns take an update — one metadata fetch per table — or `null` without an organisation URL. */
     readUpdatable: ((columns: string[]) => Promise<Record<string, boolean | null>>) | null;
     visible: boolean;
     label: string;

@@ -57,8 +57,11 @@ A React (virtual) control on the platform's React 16.14 and Fluent UI 9.46;
 neither is bundled. Strings ship in English, German, French, Japanese and
 Spanish. Two features are declared, both optional, and both prompt the maker
 at install: `WebAPI` (whether the environment audits, the fallback's rows,
-and a restore's write) and `Utility` (display names, the entity-set name
-the function needs, and whether a column takes an update). The history and the table's audit setting are read with a
+and a restore's write) and `Utility` (display names, and the entity-set name
+the function needs). Whether a column takes an update is read off the
+table's attribute metadata with the same same-origin `fetch` — the server
+does not refuse a write to a column that cannot be updated, it resolves and
+changes nothing (measured), so that read is what keeps a Restore honest. The history and the table's audit setting are read with a
 same-origin `fetch` that no feature gates.
 
 ## On the hub

@@ -6,8 +6,8 @@ Bound to **any** column — it never reads or writes the value; the binding is a
 place on the form plus, through `attributes.LogicalName`, an optional *Only
 this column* scope. The record's own identity comes from
 `mode.contextInfo` (`entityId`, `entityTypeName`), with the `recordId` /
-`recordEntity` inputs as the documented fallback. Read-only in 0.1.0: no
-restore, no edit, no delete.
+`recordEntity` inputs as the documented fallback. Read-only in 0.1.0; 0.2.0
+adds a Restore, opt-in, that writes a value back through the Web API.
 
 ## Measured — the 0.0.1 and 0.0.2 probes
 
@@ -75,9 +75,17 @@ told it is stale.
 
 Every claim above that a form has to answer is a question below. **An
 answer that goes the wrong way removes the feature that rests on it.** The
-0.1.1 build is the probe: `AuditHistory/probe.tsx` reads on mount and writes
-only behind a pressed button, and every answer prints into the control and
-under `[audit-history probe 0.1.1]` in the console.
+0.1.1 build was the probe: `AuditHistory/probe.tsx` (in git at `5d6fd2a`,
+deleted since) read on mount and wrote only behind a pressed button. Run on
+the Accounts form on `cll365`, *City Power & Light (sample)*, 2026-09-18,
+twenty changes on the record. **One answer reversed a part of the design**
+(R6, with R9): `IsValidForUpdate` is not on `getEntityMetadata`'s items,
+and the server does not refuse a write to a column that has it `false` — it
+resolves and changes nothing — so the attribute-metadata fetch is where
+*not updatable* comes from and the only thing that keeps a Restore from
+succeeding at nothing. One question the probe fumbled (R3: it read the
+lookup back with `$select=parentaccountid` instead of `_parentaccountid_value`,
+got nothing, and stopped before writing) moved to the walkthrough.
 
 **Before opening the form**, on *City Power & Light (sample)*, change and
 save: a **date** column, a **Two Options** column (*Do not allow Emails*),
@@ -88,15 +96,15 @@ History* tab and let the read half run; press the buttons in order.
 
 | # | Question | Decides | Answer |
 | --- | --- | --- | --- |
-| R1 | On every `AttributeAuditDetail` under `Prefer`, the **raw** value beside the formatted one, per column type: text, whole, decimal (P5 saw a formatted "1.00000" — what is the raw?), money, date (an ISO instant? a bare day for Date Only?), choice (integer), Two Options (boolean), multi-select (a string of integers?), lookup (`_x_value` GUID with `lookuplogicalname`, `associatednavigationproperty`, `FormattedValue`). And the `@odata.type` on the bag. | `audit/diff.ts` keeps `oldRaw`/`newRaw` and a lookup's annotations; whether a date restore can send the raw back untouched | |
-| R2 | `webAPI.updateRecord('account', id, { …every primitive old value of the newest Update… })`: resolves? read back through `retrieveRecord` with `$select` — same values? Then the same with the new values (the undo). | the primitive restore; whether a money, a decimal, a date and a Two Options each take their own raw back | |
-| R3 | A lookup: `{ '<nav>@odata.bind': null }` with `<nav>` read off the detail's `associatednavigationproperty` — resolves, reads back `null`? Then `{ '<nav>@odata.bind': '/accounts(<id>)' }` back — resolves, reads back the id? Is `<nav>` for `parentaccountid` the logical name? | the lookup restore and the lookup clear from the annotation alone, no `ManyToOneRelationships` read | |
-| R4 | After R2, the form: is the field on the form stale? Does `navigation.openForm({ entityName: 'account', entityId })` on the **same** record reload it in place with the written value? With an unsaved edit on the form, does it prompt, save, or discard? | what *Refresh* does after a restore | |
-| R5 | `mode.isControlDisabled` and `parameters.value.security` on the live form; then **deactivate** the record, reload, run again: `isControlDisabled` true on an inactive record's read-only form? (Reactivate after.) | whether the read-only form hides Restore | |
-| R6 | `utils.getEntityMetadata('account', [cols])` items: beyond `LogicalName`/`DisplayName`/`AttributeType`/`AttributeTypeName` (P11) — `IsValidForUpdate`? `Targets` on a lookup? The prototype's getters listed. And `getEntityMetadata('contact')`, `('systemuser')`, `('team')` `EntitySetName` — the lookup targets. Fallback: `EntityDefinitions(LogicalName='account')/Attributes?$select=LogicalName,AttributeType,IsValidForUpdate` — status, count, elapsed. | where *not updatable* comes from, and whether a lookup target's entity set needs a second fetch | |
-| R7 | `utils.hasEntityPrivilege('account', 3 /* Write */, 0..3)` — what each depth answers for this user; `hasEntityPrivilege('account', 2 /* Read */, 0)` as the control | whether `Basic` is the depth to ask at, and whether the method is there | |
-| R8 | What the audit detail of the R2 write itself looks like on the next read: action 2, this user, the old and new sides swapped from the row it restored, one row for the whole payload | that a restore is audited like a change, and that reloading page 1 is proof of the write | |
-| R9 | The refusal shape of `updateRecord` on a column that cannot be written (`address1_composite`) and on a read-only column (`createdon`) — `errorCode`, `message` | the sentence a refused restore shows; the rig's refusal | |
+| R1 | On every `AttributeAuditDetail` under `Prefer`, the **raw** value beside the formatted one, per column type: text, whole, decimal (P5 saw a formatted "1.00000" — what is the raw?), money, date (an ISO instant? a bare day for Date Only?), choice (integer), Two Options (boolean), multi-select (a string of integers?), lookup (`_x_value` GUID with `lookuplogicalname`, `associatednavigationproperty`, `FormattedValue`). And the `@odata.type` on the bag. | `audit/diff.ts` keeps `oldRaw`/`newRaw` and a lookup's annotations; whether a date restore can send the raw back untouched | Measured on twenty Update details, every bag `@odata.type` `#Microsoft.Dynamics.CRM.account`, `DeletedAttributes` empty on all. **Text** bare (`telephone1: "555-0154"`, no formatted). **Float** (`address1_latitude`, `AttributeTypeName` "double") raw `1` (number) with formatted `"1.00000"`. **Money** raw `30`/`40` (number), no formatted, `creditlimit_base` beside it. **Lookup** `_parentaccountid_value` a bare lower-case GUID with `FormattedValue` "Blue Yonder Airlines (sample) 10 ", `lookuplogicalname` "account", `associatednavigationproperty` "parentaccountid". The **composite** `address1_composite` rides along as a bare string on both sides. A date, a choice, a Two Options and a multi-select were **not on the record's history** — *Not verified*. |
+| R2 | `webAPI.updateRecord('account', id, { …every primitive old value of the newest Update… })`: resolves? read back through `retrieveRecord` with `$select` — same values? Then the same with the new values (the undo). | the primitive restore; whether a money, a decimal, a date and a Two Options each take their own raw back | Measured on the float pair: `{ address1_latitude: 1, address1_longitude: 1 }` **resolved in 358 ms** as `{ id, entityType }` and read back `1`/`"1.00000"`; the undo (`2`) the same in 175 ms. Money, date, choice and Two Options were not in the newest Update — the route is the same call, and they stay *Not verified* by type. |
+| R3 | A lookup: `{ '<nav>@odata.bind': null }` with `<nav>` read off the detail's `associatednavigationproperty` — resolves, reads back `null`? Then `{ '<nav>@odata.bind': '/accounts(<id>)' }` back — resolves, reads back the id? Is `<nav>` for `parentaccountid` the logical name? | the lookup restore and the lookup clear from the annotation alone, no `ManyToOneRelationships` read | **The probe fumbled it**: the read-back asked `$select=parentaccountid` (the navigation property, not `_parentaccountid_value`), got `{}`, read the lookup as empty and stopped before writing. Half the answer is in: the annotation's `<nav>` **is** `parentaccountid`, the logical name, and `getEntityMetadata('account').EntitySetName` answered `accounts` (R6). The write itself is the shape `pcf-data-table` 0.5.0 measured (`@odata.bind` with `/<set>(<id>)`, `null` clears) and is **W3/W4 of the walkthrough** below. |
+| R4 | After R2, the form: is the field on the form stale? Does `navigation.openForm({ entityName: 'account', entityId })` on the **same** record reload it in place with the written value? With an unsaved edit on the form, does it prompt, save, or discard? | what *Refresh* does after a restore | `openForm` on the same record **reloads it in place with the written value** — so *Refresh* stays. What it does with an unsaved edit on the form was not tried; the notice tells the user to save first, and it stays *Not verified*. |
+| R5 | `mode.isControlDisabled` and `parameters.value.security` on the live form; then **deactivate** the record, reload, run again: `isControlDisabled` true on an inactive record's read-only form? (Reactivate after.) | whether the read-only form hides Restore | On the active record: `isControlDisabled` **false**, `isVisible` true, `security` `{ secured: false, editable: true, readable: true }`; `webAPI.updateRecord`, `navigation.openConfirmDialog` and `navigation.openForm` all functions. The `mode` bag also carries `isRead`, `isOffline` and `contextInfo`. The inactive record was not tried — **W7** of the walkthrough. |
+| R6 | `utils.getEntityMetadata('account', [cols])` items: beyond `LogicalName`/`DisplayName`/`AttributeType`/`AttributeTypeName` (P11) — `IsValidForUpdate`? `Targets` on a lookup? The prototype's getters listed. And `getEntityMetadata('contact')`, `('systemuser')`, `('team')` `EntitySetName` — the lookup targets. Fallback: `EntityDefinitions(LogicalName='account')/Attributes?$select=LogicalName,AttributeType,IsValidForUpdate` — status, count, elapsed. | where *not updatable* comes from, and whether a lookup target's entity set needs a second fetch | **The reversal.** The item's own keys are nine private fields (`_attributeType`, `_logicalName`, `_displayName`, `attributeDescriptor`, `_isValidForGrid`, …) and the prototype lists only `constructor` — the public names are getters somewhere up the chain. It answers `AttributeType` (4 double, 6 lookup, 7 memo, 8 money, 14 string), `AttributeTypeName` (lower-case: "double", "lookup", "memo", "money", "string") and, on a lookup, `Targets: ["account"]` — and **`IsValidForUpdate` is `undefined`** on every one. The fetch answers it: **200 in 87 ms, 238 attributes**, 104 with `IsValidForUpdate: false` (every `*name` virtual column, `*_base`, `*_composite`, `createdon`, `createdby`, `exchangerate`, `importsequencenumber`, …), `name` and `parentaccountid` true. `getEntityMetadata(x).EntitySetName` answered `contacts`, `systemusers`, `teams`, `accounts` in 0–1 ms each — no second fetch for a lookup's target. |
+| R7 | `utils.hasEntityPrivilege('account', 3 /* Write */, 0..3)` — what each depth answers for this user; `hasEntityPrivilege('account', 2 /* Read */, 0)` as the control | whether `Basic` is the depth to ask at, and whether the method is there | Present, synchronous, a boolean: Write at every depth `true`, Read and Delete at Basic `true` — for a system administrator, which is the one user it cannot distinguish. A user it answers `false` for is still *Not verified*. |
+| R8 | What the audit detail of the R2 write itself looks like on the next read: action 2, this user, the old and new sides swapped from the row it restored, one row for the whole payload | that a restore is audited like a change, and that reloading page 1 is proof of the write | Measured: the total went 20 → 22 across a restore and its undo, and page 1 lists them first — each **one row for the whole payload**, action 2 by "Charles Llamas", both columns in one detail, the old side what the record held (`2`/"2.00000") and the new side what was written (`1`/"1.00000"), **formatted values on both sides**. So the reload is the proof, and the restore row reads like any other Update. |
+| R9 | The refusal shape of `updateRecord` on a column that cannot be written (`address1_composite`) and on a read-only column (`createdon`) — `errorCode`, `message` | the sentence a refused restore shows; the rig's refusal | **Neither is refused.** `{ address1_composite: 'probe' }` **resolved** in 308 ms and `{ createdon: '2020-01-01T00:00:00Z' }` **resolved** in 135 ms — the server drops a column it cannot update without a word, which is why R6's metadata read is load-bearing: without it a Restore on such a line would resolve, reload, and show nothing changed. What *is* refused, both as `errorCode` 2147781913 with the *Error identified in Payload* preamble and the sentence after `InnerException :`: an **unknown column** (`Invalid property 'probe_no_such_column' was found in entity 'Microsoft.Dynamics.CRM.account'`) and an **unknown navigation property** (`An undeclared property 'probe_no_such_nav' which only has property annotations in the payload but no property value was found`). The rig reproduces the silent drop and the second refusal. |
 
 ## Where the rows come from
 
@@ -151,6 +159,8 @@ same-origin function call and `context.webAPI`, neither of which the hub's
 harness supplies, so every preset carries a JSON history in `sampleData`
 and the sample route renders it. Everything that never leaves the browser is
 real there; the two switches' sentences come from the preset's `auditing`.
+A Restore on the demo writes into the sample and prepends itself as the
+newest row, without the dialog — the *With Restore on* preset.
 
 ## Not verified
 
@@ -171,6 +181,15 @@ real there; the two switches' sentences come from the preset's `auditing`.
 - A history longer than one page of the *attribute* function, and a
   `PagingCookie` older than the page it came from.
 - Audit history on the phone client — Learn says it is not available there.
+- **0.2.0 — the raw and the write for a date, a choice, a Two Options and a
+  multi-select** (R1, R2): none was on the record's history. The route is
+  the same `updateRecord` with the wire's own value; the risk is a date
+  column whose behaviour rewrites the string on the way back.
+- **A user `hasEntityPrivilege` answers `false` for** (R7), and a write the
+  server refuses for a privilege — the sentence exists, the shape it is
+  read from is the rig's.
+- **`openForm` on the same record with an unsaved edit** (R4): prompt,
+  save, or discard.
 - Canvas apps: no `context.webAPI`, no `contextInfo`, no same-origin fetch of
   an organisation URL. There is no canvas page for that reason.
 - An on-premises organisation URL with the organisation in the path.
@@ -194,6 +213,24 @@ two things came from looking rather than asking.
 | W8 | A new account | *Save the record first*, then the Create | Saved before the tab was opened, so the *save first* state was not seen. **The Create was**: 31 columns, every one *(empty)* → the value, the platform's formatted values throughout (*Owner* as a name, *Currency* "US Dollar", every choice "Default Value", *Process* as a zero GUID). |
 | W9 | The phone layout | Stacked rows, nothing clipped | Date, user and change on three lines; the values table with its header dropped and three columns fitting; the count on its own line. |
 | W10 | Anything wrong | — | Nothing beyond W5 and W7. |
+
+## Walkthrough — 0.2.0 on the form
+
+The 0.1.9 build is the shipping code at a throwaway number, so the real
+release number stays free if the form finds something. *Show Restore* on
+the control's properties, the Accounts form, *City Power & Light*.
+
+| # | On the form | Expected | Answer |
+| --- | --- | --- | --- |
+| W1 | Open the newest *Updated* row (latitude/longitude) | A *Restore* at the end of each line, a *Restore all 2* above the table | |
+| W2 | Press one *Restore*, cancel the dialog; press again, confirm | Cancel: nothing. Confirm: the dialog names the column and the value; the list reloads with the restore as the newest row by you; the notice above the list; the form's field still shows the earlier value | |
+| W3 | Open the *Parent Account* row (the set: *(empty)* → Blue Yonder) and press its *Restore* | The dialog says the column will be cleared; the record's Parent Account is empty afterwards (check the form after *Refresh*); the restore row shows Blue Yonder → *(cleared)* | |
+| W4 | Open that restore row and press *Restore* on its line | The lookup is set back to Blue Yonder — the write bound from the annotation's navigation property | |
+| W5 | Press *Refresh* on the notice | The form reloads on the same record with the restored values showing | |
+| W6 | Open a row with a value the platform cannot take back — the composite address line, or the *Set State* / *Assign* rows | No *Restore* on the composite line (the metadata's no); no *Restore* at all on Set State and Assign | |
+| W7 | Deactivate the record, reload the form, open a row | No *Restore* anywhere — `isControlDisabled` on a read-only form. Reactivate after. | |
+| W8 | Turn *Show Restore* off in the form designer, publish, reload | The table back to three columns, no buttons, no notice | |
+| W9 | The phone layout at ~300px (narrow the browser) | The button whole at the end of the line, the name column narrower | |
 
 ## Screenshots
 
