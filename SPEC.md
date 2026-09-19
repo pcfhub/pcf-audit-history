@@ -189,7 +189,7 @@ newest row, without the dialog — the *With Restore on* preset.
   server refuses for a privilege — the sentence exists, the shape it is
   read from is the rig's.
 - **`openForm` on the same record with an unsaved edit** (R4): prompt,
-  save, or discard.
+  save, or discard. W5 refreshed a clean form.
 - Canvas apps: no `context.webAPI`, no `contextInfo`, no same-origin fetch of
   an organisation URL. There is no canvas page for that reason.
 - An on-premises organisation URL with the organisation in the path.
@@ -214,23 +214,28 @@ two things came from looking rather than asking.
 | W9 | The phone layout | Stacked rows, nothing clipped | Date, user and change on three lines; the values table with its header dropped and three columns fitting; the count on its own line. |
 | W10 | Anything wrong | — | Nothing beyond W5 and W7. |
 
-## Walkthrough — 0.2.0 on the form
+## Walkthrough — 0.2.0 on the form, 2026-09-18
 
-The 0.1.9 build is the shipping code at a throwaway number, so the real
-release number stays free if the form finds something. *Show Restore* on
-the control's properties, the Accounts form, *City Power & Light*.
+The 0.1.9 build was the shipping code at a throwaway number, so the real
+release number stayed free if the form found something. *Show Restore* on
+the control's properties, the Accounts form, *City Power & Light*. **All
+nine the right way**, nothing cut, nothing corrected — the first release
+of this control the form did not change. What it settled beyond the probe:
+the lookup clear and set from the annotation's navigation property (W3,
+W4 — the R3 the probe fumbled), and `isControlDisabled` on an inactive
+record (W7).
 
 | # | On the form | Expected | Answer |
 | --- | --- | --- | --- |
-| W1 | Open the newest *Updated* row (latitude/longitude) | A *Restore* at the end of each line, a *Restore all 2* above the table | |
-| W2 | Press one *Restore*, cancel the dialog; press again, confirm | Cancel: nothing. Confirm: the dialog names the column and the value; the list reloads with the restore as the newest row by you; the notice above the list; the form's field still shows the earlier value | |
-| W3 | Open the *Parent Account* row (the set: *(empty)* → Blue Yonder) and press its *Restore* | The dialog says the column will be cleared; the record's Parent Account is empty afterwards (check the form after *Refresh*); the restore row shows Blue Yonder → *(cleared)* | |
-| W4 | Open that restore row and press *Restore* on its line | The lookup is set back to Blue Yonder — the write bound from the annotation's navigation property | |
-| W5 | Press *Refresh* on the notice | The form reloads on the same record with the restored values showing | |
-| W6 | Open a row with a value the platform cannot take back — the composite address line, or the *Set State* / *Assign* rows | No *Restore* on the composite line (the metadata's no); no *Restore* at all on Set State and Assign | |
-| W7 | Deactivate the record, reload the form, open a row | No *Restore* anywhere — `isControlDisabled` on a read-only form. Reactivate after. | |
-| W8 | Turn *Show Restore* off in the form designer, publish, reload | The table back to three columns, no buttons, no notice | |
-| W9 | The phone layout at ~300px (narrow the browser) | The button whole at the end of the line, the name column narrower | |
+| W1 | Open the newest *Updated* row (latitude/longitude) | A *Restore* at the end of each line, a *Restore all 2* above the table | A *Restore* per line and *Restore all 2*, as expected. |
+| W2 | Press one *Restore*, cancel the dialog; press again, confirm | Cancel: nothing. Confirm: the dialog names the column and the value; the list reloads with the restore as the newest row by you; the notice above the list; the form's field still shows the earlier value | Cancel: nothing. Confirm: the dialog named the column and the value; the restore landed as the newest row by the user; the notice above the list; the form's field kept the earlier value until refreshed. |
+| W3 | Open the *Parent Account* row (the set: *(empty)* → Blue Yonder) and press its *Restore* | The dialog says the column will be cleared; the record's Parent Account is empty afterwards (check the form after *Refresh*); the restore row shows Blue Yonder → *(cleared)* | The dialog said the column would be cleared; Parent Account empty afterwards; the restore row shows Blue Yonder → *(cleared)*. The clear went as `{ "parentaccountid@odata.bind": null }`, the key from the detail's own annotation. |
+| W4 | Open that restore row and press *Restore* on its line | The lookup is set back to Blue Yonder — the write bound from the annotation's navigation property | Set back to Blue Yonder — `/accounts(<id>)` bound from the annotation, the entity set from `getEntityMetadata`. |
+| W5 | Press *Refresh* on the notice | The form reloads on the same record with the restored values showing | The form reloaded on the same record with the restored values. |
+| W6 | Open a row with a value the platform cannot take back — the composite address line, or the *Set State* / *Assign* rows | No *Restore* on the composite line (the metadata's no); no *Restore* at all on Set State and Assign | No *Restore* on the composite line (the attribute metadata's no, read off `EntityDefinitions/Attributes`); none at all on *Set State* and *Assign*. |
+| W7 | Deactivate the record, reload the form, open a row | No *Restore* anywhere — `isControlDisabled` on a read-only form. Reactivate after. | No *Restore* anywhere on the deactivated record — `isControlDisabled` true on the read-only form. Reactivated after. |
+| W8 | Turn *Show Restore* off in the form designer, publish, reload | The table back to three columns, no buttons, no notice | Three columns, no buttons, no notice. |
+| W9 | The phone layout at ~300px (narrow the browser) | The button whole at the end of the line, the name column narrower | The button whole at the end of the line, the name column narrower. |
 
 ## Screenshots
 
