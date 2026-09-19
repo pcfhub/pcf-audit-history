@@ -4,6 +4,7 @@
   "name": "Audit History",
   "tagline": "A record's audit history on the form: who changed what, when, and the old value beside the new — and a Restore to put it back.",
   "category": "utilities",
+  "hosts": ["model-driven"],
   "tags": [
     "react",
     "audit",
@@ -12,7 +13,6 @@
     "changelog",
     "dataverse",
     "restore",
-    "model-driven",
     "accessible"
   ],
   "control": {
