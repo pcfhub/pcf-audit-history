@@ -5,6 +5,8 @@ A record's audit history on the form: who changed what, when, and the old value 
 [![Build](https://github.com/pcfhub/pcf-audit-history/actions/workflows/build.yml/badge.svg)](https://github.com/pcfhub/pcf-audit-history/actions/workflows/build.yml)
 [![Release](https://github.com/pcfhub/pcf-audit-history/actions/workflows/release.yml/badge.svg)](https://github.com/pcfhub/pcf-audit-history/actions/workflows/release.yml)
 
+[![Try it live on PCFHub](https://pcfhub.dev/badges/try-it-live.svg)](https://pcfhub.dev/components/pcf-audit-history)
+
 Documentation lives on [PCFHub](https://pcfhub.dev/components/pcf-audit-history), built
 from the `docs/` directory in this repository. Edit the Markdown here; the hub
 recompiles it.
