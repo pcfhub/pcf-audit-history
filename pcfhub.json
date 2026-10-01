@@ -3,6 +3,7 @@
   "slug": "pcf-audit-history",
   "name": "Audit History",
   "tagline": "A record's audit history on the form: who changed what, when, and the old value beside the new — and a Restore to put it back.",
+  "summary": "Lists a record's audited changes on the form itself, newest first: when, by whom and what kind of change. Open a row to see every column that changed, with its old value beside the new one: lookups as names, choices as labels, dates as the platform formats them.\n\n- Filter the list to one column, or bind the control to a column to show only that column's history\n- Says why a list is empty: auditing turned off for the table is a different message from no changes recorded\n- With **Show Restore** on, an old value can be put back after a confirmation\n\nModel-driven apps only.",
   "category": "utilities",
   "hosts": ["model-driven"],
   "tags": [
