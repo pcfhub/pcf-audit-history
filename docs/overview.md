@@ -8,6 +8,10 @@ order: 1
 
 A record's audit history on the form: who changed what, when, and the old value beside the new.
 
+:::callout{type=warning}
+**Reference example · built with AI.** This control was written with AI (Claude) and tested on a live Dataverse form; its code has not been reviewed line by line. It is published as a worked example and is not maintained — read the source and [SPEC.md](https://github.com/pcfhub/pcf-audit-history/blob/main/SPEC.md) (what was measured on the form) before you use it. Fixes are not guaranteed.
+:::
+
 ::image{src=media/screenshot.png alt="An account form section listing the record's changes newest first — a date, a user and an action per row — with one row opened to show the Parent Account column going from empty to Contoso Europe and another showing Website cleared" zoom}
 
 Place it on any column of a form and it lists the record's audited changes,
