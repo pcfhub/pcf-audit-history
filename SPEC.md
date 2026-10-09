@@ -20,7 +20,7 @@ design**: the build assumed Learn's statement that the Web API returns no
 row for the values; the form showed `AuditRecord` on every detail, so the
 history is one function call per page.
 
-**Environment:** the Accounts form on `cll365` (`https://cll365.crm.dynamics.com`),
+**Environment:** the Accounts form on the test environment,
 2026-09-18, the control bound to *Address 2: Street 1* (`address2_line1`) on
 *City Power & Light (sample)*. Run 1 with one audited change on the record
 (*Parent Account* set); run 2 after fifteen — name, phone, credit limit,
@@ -29,7 +29,7 @@ needed.
 
 | # | Question | Decides | Answer |
 | --- | --- | --- | --- |
-| P1 | What does `parameters.value` look like on an `of-type-group` binding to `name` — `type`, `attributes.LogicalName` / `DisplayName`, `security`? And `mode.contextInfo`: `entityId` bare? `entityTypeName` present? | `resolveBoundColumn()`, `resolveRecord()`; whether the type group survives on a form or falls back to `SingleLine.Text` | Measured 2026-09-18 (run 1, bound to *Address 2: Street 1*): the type group is offered on any column and survives on the form — `attributes.LogicalName` = `address2_line1`, `DisplayName` = "Address 2: Street 1", `attributes.Type` = `string`, while **`parameter.type` said `Currency`**, a member of the group rather than the column's type, so a type-group binding's `type` is not to be read. `security` = `{ secured: false, editable: true, readable: true }`; `raw` = `null`. `mode.contextInfo` = `{ entityTypeName: "account", entityId: "83e84297-…", entityRecordName }` — bare, lower-case. `page.getClientUrl()` present, answering `https://cll365.crm.dynamics.com`. Unset inputs arrive `null`; `pageSize` as its default 20. |
+| P1 | What does `parameters.value` look like on an `of-type-group` binding to `name` — `type`, `attributes.LogicalName` / `DisplayName`, `security`? And `mode.contextInfo`: `entityId` bare? `entityTypeName` present? | `resolveBoundColumn()`, `resolveRecord()`; whether the type group survives on a form or falls back to `SingleLine.Text` | Measured 2026-09-18 (run 1, bound to *Address 2: Street 1*): the type group is offered on any column and survives on the form — `attributes.LogicalName` = `address2_line1`, `DisplayName` = "Address 2: Street 1", `attributes.Type` = `string`, while **`parameter.type` said `Currency`**, a member of the group rather than the column's type, so a type-group binding's `type` is not to be read. `security` = `{ secured: false, editable: true, readable: true }`; `raw` = `null`. `mode.contextInfo` = `{ entityTypeName: "account", entityId: "83e84297-…", entityRecordName }` — bare, lower-case. `page.getClientUrl()` present, answering `https://<org>.crm.dynamics.com`. Unset inputs arrive `null`; `pageSize` as its default 20. |
 | P2 | `webAPI.retrieveMultipleRecords('audit', '?$select=…&$filter=_objectid_value eq <id>&$orderby=createdon desc', 5)`: status, elapsed, the first row's keys — are `createdon@…FormattedValue`, `action@…FormattedValue`, `_userid_value@…FormattedValue` and `…lookuplogicalname` present without a `Prefer` header? Is `nextLink` set at page size 5? | `audit/rows.ts` reads formatted values or falls back; `audit/actions.ts` prefers the platform's label | Measured: `retrieveMultipleRecords('audit', …, 5)` answered in 110 ms with the formatted values **without** a `Prefer` header — `createdon@…FormattedValue` ("9/17/2026 8:25 PM", the user's zone), `action@…`, `operation@…`, `_userid_value@…FormattedValue` and `…lookuplogicalname` — plus `versionnumber` unasked. The result carries `nextLink` as **an empty string** when there is no next page, not `undefined`. |
 | P3 | Does the PCF Web API follow its own `nextLink` when it is passed back as `options` — the full URL, or only its query part? Failing both, does a keyset filter `createdon lt <last>` page? | how the audit table is paged; the rig's modelling | **The audit table does not page at all.** Run 2: `retrieveMultipleRecords('audit', …, 5)` answered **15 rows for a page size of 5**, `nextLink` `""`. Cosmos-backed, and `maxPageSize` is ignored; there is no link to follow. The table route reads every row once and slices; the rig answers the same way. |
 | P4 | A same-origin `fetch` of `audits(<id>)/Microsoft.Dynamics.CRM.RetrieveAuditDetails`: status, elapsed, body keys; does `Prefer: odata.include-annotations="*"` add the formatted-value annotations? Then a whole page of 20 in parallel: total elapsed, any 429 | eager vs lazy `DETAIL_MODE`; whether the column filter is per page or per expanded row | Measured: 200 in 98 ms. **Without `Prefer` the values carry no annotations** (`_parentaccountid_value` alone); with `Prefer: odata.include-annotations="*"` the formatted value, `associatednavigationproperty` and `lookuplogicalname` arrive. Run 2, fifteen rows: the page in 317 ms and **fifteen details in parallel in 213 ms**, all 200 — which would have been fine, and is moot: **the detail carries `AuditRecord`** (P13), so no control needs one request per row. |
@@ -77,7 +77,7 @@ Every claim above that a form has to answer is a question below. **An
 answer that goes the wrong way removes the feature that rests on it.** The
 0.1.1 build was the probe: `AuditHistory/probe.tsx` (in git at `5d6fd2a`,
 deleted since) read on mount and wrote only behind a pressed button. Run on
-the Accounts form on `cll365`, *City Power & Light (sample)*, 2026-09-18,
+the Accounts form on the test environment, *City Power & Light (sample)*, 2026-09-18,
 twenty changes on the record. **One answer reversed a part of the design**
 (R6, with R9): `IsValidForUpdate` is not on `getEntityMetadata`'s items,
 and the server does not refuse a write to a column that has it `false` — it
@@ -196,7 +196,7 @@ newest row, without the dialog — the *With Restore on* preset.
 
 ## Walkthrough — 0.1.0 on the form, 2026-09-18
 
-The Accounts form on `cll365`, the control on an *Audit History* tab bound to
+The Accounts form on the test environment, the control on an *Audit History* tab bound to
 *Address 2: Street 1*, then rebound to *Address 1: Street 2* for W7; a new
 account *test audit* for W8; the phone layout for W9. All ten the right way;
 two things came from looking rather than asking.
