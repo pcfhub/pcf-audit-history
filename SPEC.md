@@ -237,6 +237,28 @@ record (W7).
 | W8 | Turn *Show Restore* off in the form designer, publish, reload | The table back to three columns, no buttons, no notice | Three columns, no buttons, no notice. |
 | W9 | The phone layout at ~300px (narrow the browser) | The button whole at the end of the line, the name column narrower | The button whole at the end of the line, the name column narrower. |
 
+## 0.2.1 — a Restore keeps focus while it writes
+
+Through 0.2.0 both Restore buttons left the keyboard user on the page body
+for the whole write. *Restore all* set `disabled` while busy, and a focused
+button that becomes disabled is blurred. The line's own *Restore* was worse:
+it was swapped for a spinner and a *Restoring* label, so the button that had
+just been pressed left the document. pcf-form-action-button measured the
+mechanism on the account form on 2026-10-28 (`document.activeElement` was
+`BODY` from the press on). Here it was found by the workspace's
+`check-template` warning on `disabled={busy}`, not by a report.
+
+Both now use Fluent's `disabledFocusable`, which renders aria-disabled and
+swallows the click while keeping the button in the tab order. The line keeps
+one button throughout: while it writes, the spinner is the button's icon and
+the label reads *Restoring*. `run` was already single-flight, so a second
+press is refused by state as well as by the button.
+
+The suite's Fluent stand-in now renders `disabledFocusable` as Fluent does
+(`aria-disabled="true"`, no `disabled`). React drops an unknown boolean
+attribute, so before this no assertion could have seen it. The assertion
+fails with `disabled={restore.disabled}` put back.
+
 ## Screenshots
 
 Headless Chrome against `dev/preview.html` on the harness server

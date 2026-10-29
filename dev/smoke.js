@@ -155,6 +155,17 @@ function fluentStandIn(name) {
             Object.keys(props || {}).forEach((key) => {
                 const value = props[key];
 
+                // What Fluent renders for it: aria-disabled, and no `disabled`.
+                // Passed through as itself it is an unknown boolean attribute,
+                // which React drops — the assertion would see nothing at all.
+                if (key === 'disabledFocusable') {
+                    if (value === true) {
+                        passed['aria-disabled'] = 'true';
+                    }
+
+                    return;
+                }
+
                 if (key !== 'children' && ['string', 'number', 'boolean'].includes(typeof value)) {
                     passed[key] = value;
                 }
@@ -894,10 +905,21 @@ check('two restorable lines get two Restores and one Restore all', (twoLines.mat
 check('a Set State row offers nothing, whatever the host — three columns', !restoreHtml(6).includes('AuditHistory-restore'));
 check('a capped line keeps an empty cell while its siblings get the button', (() => { const m = restoreHtml(5); return !m.includes('AuditHistory-restore"'); })());
 check('the metadata\'s no removes the button', !restoreHtml(4, { state: { status: 'idle' }, updatable: () => false, run: () => undefined }).includes('AuditHistory-restore"'));
-check('while a restore is in flight every button is disabled and the line being written says so', (() => {
+/*
+ * Every button stays a button while a restore is in flight — focusable, marked
+ * aria-disabled through Fluent's `disabledFocusable`, never `disabled`. A
+ * focused button that becomes disabled, or that is swapped for a spinner, is
+ * blurred and the keyboard user lands on the page body (measured on the form,
+ * pcf-form-action-button, 2026-10-28). Through 0.2.0 both happened here.
+ */
+check('while a restore is in flight every button stays focusable, aria-disabled — and the line being written keeps its button', (() => {
     const m = restoreHtml(25, { state: { status: 'busy', id: audits[24].auditid, columns: ['address1_city'] }, updatable: () => null, run: () => undefined });
-    return m.includes('resx:AuditHistory_Restoring') && /AuditHistory-restore"[^>]*disabled/.test(m);
-})());
+    const buttons = m.match(/<div data-fluent="Button"[^>]*>/g) || [];
+
+    return buttons.length === 3
+        && buttons.every((b) => /aria-disabled="true"/.test(b) && !/\sdisabled=""/.test(b))
+        && buttons.some((b) => /AuditHistory-restore--busy/.test(b) && /aria-label="resx:AuditHistory_Restoring: L:address1_city"/.test(b));
+})(), (restoreHtml(25, { state: { status: 'busy', id: audits[24].auditid, columns: ['address1_city'] }, updatable: () => null, run: () => undefined }).match(/<div data-fluent="Button"[^>]*>/g) || []).join('\n'));
 check('a failed restore says why on its row — the privilege sentence, or the server\'s', (() => {
     const a = restoreHtml(4, { state: { status: 'failed', id: audits[3].auditid, columns: ['industrycode'], fault: { message: 'boom', privilege: false } }, updatable: () => null, run: () => undefined });
     const b = restoreHtml(4, { state: { status: 'failed', id: audits[3].auditid, columns: ['industrycode'], fault: { message: 'x', privilege: true } }, updatable: () => null, run: () => undefined });

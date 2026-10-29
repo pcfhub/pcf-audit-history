@@ -778,7 +778,15 @@ function Values(props: {
         <>
             {offered && lines.length > 1 && (
                 <div className="AuditHistory-restore-all">
-                    <Button appearance="secondary" size="small" disabled={busy} onClick={() => restore?.run(lines)}>
+                    {/*
+                      `disabledFocusable`, not `disabled`: a focused button that
+                      becomes disabled is blurred, and a keyboard user who pressed
+                      Enter here was left on the page body for the whole write
+                      (pcf-form-action-button measured it, 2026-10-28). Fluent's
+                      prop sets aria-disabled and swallows the click; the press is
+                      refused by state as well (`run` is single-flight).
+                    */}
+                    <Button appearance="secondary" size="small" disabledFocusable={busy} onClick={() => restore?.run(lines)}>
                         {fill(strings.restoreAll, lines.length)}
                     </Button>
                 </div>
@@ -843,23 +851,28 @@ function ValueRow(props: { change: Change; label: string; strings: Strings; rest
             <td className="AuditHistory-new">{cell(change.newText, change.kind === 'cleared' ? strings.cleared : strings.empty)}</td>
             {restore && (
                 <td className="AuditHistory-restore-cell">
-                    {restore.offered && (restore.busy ? (
-                        <span className="AuditHistory-message AuditHistory-message--busy AuditHistory-message--inline">
-                            <Spinner size="tiny" aria-hidden="true" />
-                            <span>{strings.restoring}</span>
-                        </span>
-                    ) : (
+                    {/*
+                      One button throughout, and never `disabled`. It used to be
+                      swapped for a spinner while its own line was written, and
+                      the button the user had just pressed left the document —
+                      focus to the page body, the same loss as disabling it. Now
+                      the spinner is the button's icon and the label says
+                      Restoring; `disabledFocusable` keeps it in the tab order
+                      with aria-disabled, and `run` refuses a second press.
+                    */}
+                    {restore.offered && (
                         <Button
                             appearance="subtle"
                             size="small"
-                            className="AuditHistory-restore"
-                            disabled={restore.disabled}
-                            aria-label={`${strings.restore}: ${props.label}`}
+                            className={`AuditHistory-restore${restore.busy ? ' AuditHistory-restore--busy' : ''}`}
+                            disabledFocusable={restore.disabled}
+                            icon={restore.busy ? <Spinner size="tiny" aria-hidden="true" /> : undefined}
+                            aria-label={`${restore.busy ? strings.restoring : strings.restore}: ${props.label}`}
                             onClick={restore.run}
                         >
-                            {strings.restore}
+                            {restore.busy ? strings.restoring : strings.restore}
                         </Button>
-                    ))}
+                    )}
                 </td>
             )}
         </tr>
