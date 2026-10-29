@@ -259,6 +259,16 @@ The suite's Fluent stand-in now renders `disabledFocusable` as Fluent does
 attribute, so before this no assertion could have seen it. The assertion
 fails with `disabled={restore.disabled}` put back.
 
+**On the form, 2026-10-29** (0.2.1 imported, *Show Restore* switched on for
+the check and off again after, on *Adventure Works (sample)*). The `code`
+line's **Restore** was focused and pressed with a real Enter. The platform's
+confirmation opened with its own **Restore** focused, and a second Enter
+confirmed. Sampled every 300 ms, focus went from the dialog's button to
+**Restoring…: code** (`aria-disabled`, still the active element) and then to
+**Restore: code** when the write landed. It never touched `BODY`. The value
+was then put back by restoring the restore. The column reads its original 500
+characters, and there are two audit rows from that day.
+
 ## Screenshots
 
 Headless Chrome against `dev/preview.html` on the harness server
